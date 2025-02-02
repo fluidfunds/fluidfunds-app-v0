@@ -2,20 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px; /* This accounts for the fixed header */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --token-b3ff2230-c5c0-41a8-b629-d659f479b689: rgb(0, 0, 0);
+  --token-aea172f0-3396-4049-adec-6bcfa7c365ff: rgb(37, 202, 172);
+  --token-92a1cea2-6d53-45ff-98da-32c110a8c3fc: rgb(255, 255, 255);
+  --token-8c14519b-b926-46e8-8772-9a05cbede172: rgba(255, 255, 255, 0.7);
+  --token-c9fc1380-5d14-49ab-960e-cc3a53f6f2d0: rgba(255, 255, 255, 0.06);
+  --token-6839e435-35f3-4ab3-b723-e98c27e525bc: rgba(255, 255, 255, 0.1);
+  --token-729f323b-4a85-474f-8f3a-c5c840127090: rgb(13, 13, 13);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--token-729f323b-4a85-474f-8f3a-c5c840127090);
+  color: var(--token-92a1cea2-6d53-45ff-98da-32c110a8c3fc);
+}
+
+@layer components {
+  .nav-button {
+    @apply rounded-lg border border-solid border-[rgba(255,255,255,0.1)] 
+           bg-[rgba(255,255,255,0.06)] px-4 py-2 text-sm font-medium
+           transition-colors hover:bg-[rgba(255,255,255,0.1)];
+  }
+
+  .primary-button {
+    @apply rounded-lg bg-[rgb(37,202,172)] px-4 py-2 text-sm font-medium
+           text-black transition-colors hover:bg-[rgb(31,171,146)];
+  }
 }

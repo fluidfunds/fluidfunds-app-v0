@@ -1,101 +1,243 @@
+'use client'
 import Image from "next/image";
+import { motion } from 'framer-motion'
+import Header from './components/Header'
+import FAQ from './components/FAQ'
+import Benefits from './components/Benefits'
+import ProcessSteps from './components/ProcessSteps'
+import ParticleBackground from './components/ParticleBackground'
+import HeroCarousel from './components/HeroCarousel'
+import Link from 'next/link'
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const funds = [
+    { name: "CapitalX", status: "Live", investors: "1.2K" },
+    { name: "RamenFund", status: "Coming Soon" },
+    { name: "LuFund", status: "Live", investors: "856" },
+    { name: "BoosterCapital", status: "Live", investors: "2.1K" },
+    { name: "NewGenFund", status: "Live", investors: "543" },
+    { name: "BeraCapital", status: "Live", investors: "1.5K" },
+  ]
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  return (
+    <div className="relative min-h-screen bg-fluid-bg text-fluid-white overflow-hidden">
+      {/* Particle Background */}
+      <ParticleBackground />
+      
+      {/* Purple Gradient */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at top, rgba(55, 0, 110, 0.15), transparent 70%)',
+          mixBlendMode: 'screen'
+        }}
+      />
+
+      <Header />
+      
+      {/* Hero Section */}
+      <main className="relative z-10 flex flex-col items-center justify-center px-6 pt-[180px] pb-[100px]">
+        <div className="flex flex-col items-center gap-[35px] w-full max-w-7xl">
+          {/* Title Section */}
+          <div id="features" className="flex flex-col items-center gap-6 w-full max-w-[840px] mx-auto">
+            <div className="overflow-hidden w-full">
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ 
+                  duration: 1,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: 0.1 
+                }}
+                className="text-center"
+              >
+                <h1 className="text-[56px] leading-[1.2] tracking-[-0.02em] font-medium mb-0 text-[rgb(37,202,172)]">
+                  <span className="inline">Are You Tired of </span>
+                  <span className="inline">Rug-Pulls?</span>
+                </h1>
+              </motion.div>
+            </div>
+
+            <div className="overflow-hidden w-full">
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ 
+                  duration: 1,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: 0.2 
+                }}
+                className="text-center"
+              >
+                <h2 className="text-[56px] leading-[1] tracking-[-0.02em] font-medium text-[rgb(37,202,172)]">
+                  Trade with Confidence.
+                </h2>
+              </motion.div>
+            </div>
+
+            <div className="overflow-hidden max-w-[620px]">
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ 
+                  duration: 1,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: 0.3 
+                }}
+                className="text-center"
+              >
+                <motion.p 
+                  className="text-[20px] leading-[1.4] text-[rgba(255,255,255,0.7)] px-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.8 }}
+                >
+                  A safe platform for fund owners and managers to trade whitelisted tokens 
+                  with high market caps, ensuring security and transparency in every transaction.
+                </motion.p>
+              </motion.div>
+            </div>
+
+            {/* Hero Carousel */}
+            <div className="w-full">
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 1,
+                  ease: [0.16, 1, 0.3, 1],
+                  delay: 0.4 
+                }}
+              >
+                <HeroCarousel />
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Process Section */}
+          <div id="process" className="w-full">
+            <ProcessSteps />
+          </div>
+
+          {/* Move CTA Button here */}
+          <motion.div 
+            className="w-full flex justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              duration: 0.8,
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.2 
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <Link
+              href="/connect"
+              className="h-12 px-8 rounded-xl bg-fluid-primary text-fluid-white 
+                       font-medium inline-flex items-center justify-center hover:bg-fluid-primary/90 
+                       transition-colors duration-200"
+            >
+              Start a Hedge Fund
+            </Link>
+          </motion.div>
+
+          {/* Funds Section */}
+          <motion.div
+            id="funds"
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+            className="w-full"
           >
-            Read our docs
-          </a>
+            <h2 className="text-[40px] font-medium text-center mb-4">
+              Stream USDC to Your Favorite Fund
+            </h2>
+            <h3 className="text-xl text-fluid-white-70 text-center mb-12">
+              Trending Funds
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {funds.map((fund, index) => (
+                <div key={index} className="bg-fluid-white-6 border border-fluid-white-10 rounded-2xl p-6 hover:bg-fluid-white-10 transition-colors">
+                  <div className="aspect-video bg-fluid-white-10 rounded-lg mb-4 overflow-hidden">
+                    <Image
+                      src={`/funds/${fund.name.toLowerCase()}.jpg`}
+                      alt={`${fund.name} Fund`}
+                      width={400}
+                      height={225}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h3 className="text-xl font-medium mb-2">{fund.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      fund.status === "Live" 
+                        ? "bg-fluid-primary/10 text-fluid-primary" 
+                        : "bg-yellow-500/10 text-yellow-500"
+                    }`}>
+                      {fund.status}
+                    </span>
+                    {fund.investors && (
+                      <span className="text-fluid-white-70 text-sm">• {fund.investors} investors</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Benefits Section */}
+          <div id="benefits">
+            <Benefits />
+          </div>
+
+          {/* Community Section */}
+          <motion.div
+            id="community"
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
+            className="text-center"
+          >
+            <h2 className="text-[40px] font-medium mb-6">
+              Build and trade with your Community
+            </h2>
+            <p className="text-fluid-white-70 text-xl max-w-[600px] mb-8">
+              A secure platform for users to subscribe to fund managers with rug-proof contracts, giving you peace of mind while growing your portfolio.
+            </p>
+            <p className="text-fluid-white-70">
+              X anon to hedge fund manager pipeline. 
+              <a 
+                href="https://twitter.com/fluidfunds" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-fluid-primary hover:underline"
+              >
+                DM @fluidfunds on X
+              </a> 
+              to get your Fund listed.
+            </p>
+          </motion.div>
+
+          {/* FAQ Section */}
+          <div id="faq">
+            <FAQ />
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      {/* Footer */}
+      <footer className="border-t border-fluid-white-10 py-8">
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+          <span className="text-fluid-primary font-medium">FluidFunds</span>
+          <a
+            href="https://x.com/fluidfunds"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-fluid-white-70 hover:text-fluid-white transition-colors"
+          >
+            Follow us on X
+          </a>
+        </div>
       </footer>
     </div>
-  );
+  )
 }
