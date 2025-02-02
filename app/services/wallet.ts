@@ -17,12 +17,7 @@ export const createWallet = () => {
   })
 }
 
-// Define more specific types for ethereum provider
-interface RequestArguments {
-  method: string;
-  params?: Array<string | number | boolean | object>;
-}
-
+// Define ethereum provider interface
 type ProviderMessage = {
   type: string;
   data: unknown;
@@ -36,7 +31,6 @@ type ProviderRequest = {
   eth_requestAccounts: never[];
   eth_accounts: never[];
   eth_chainId: never[];
-  // Add other specific ethereum methods as needed
 };
 
 interface EthereumProvider {
