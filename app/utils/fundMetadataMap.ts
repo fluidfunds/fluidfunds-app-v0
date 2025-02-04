@@ -14,80 +14,87 @@ export const initializeMetadataMap = () => {
 
   try {
     const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    console.log('Loading stored metadata:', storedData)
+    console.log('Initializing metadata map with stored data:', storedData)
+    
+    // Populate the Map with stored data
+    Object.entries(storedData).forEach(([address, data]) => {
+      fundMetadataMap.set(address.toLowerCase(), data as StoredMetadata)
+    })
+    
     return storedData
   } catch (error) {
-    console.error('Error loading initial metadata:', error)
+    console.error('Error initializing metadata map:', error)
     return {}
   }
 }
 
-export const setFundMetadataUri = (fundAddress: string, uri: string, manager: string) => {
-  if (typeof window === 'undefined') return
-
-  const key = fundAddress.toLowerCase()
-  const data = { uri, manager: manager.toLowerCase() }
-  
-  fundMetadataMap.set(key, data)
-  
+export const setFundMetadataUri = (
+  fundAddress: string,
+  uri: string,
+  manager: string
+) => {
   try {
-    const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const key = fundAddress.toLowerCase()
+    const data = { uri, manager }
+    
+    // Update in-memory map
+    fundMetadataMap.set(key, data)
+    
+    // Update localStorage with correct storage key
+    const stored = localStorage.getItem(STORAGE_KEY)
+    const storedData = stored ? JSON.parse(stored) : {}
     storedData[key] = data
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData))
+    
+    console.log('Metadata stored successfully:', {
+      fundAddress: key,
+      uri,
+      manager,
+      currentMap: Object.fromEntries(fundMetadataMap),
+      localStorage: storedData
+    })
   } catch (error) {
-    console.error('Error saving metadata:', error)
+    console.error('Error storing fund metadata:', error)
   }
 }
 
-export const getFundMetadataUri = (fundAddress: string, currentWallet?: string): string | undefined => {
-  if (typeof window === 'undefined') return undefined // Skip if running on server
+export const getFundMetadataFromStorage = (fundAddress: string): StoredMetadata | null => {
+  if (typeof window === 'undefined') return null
 
   const key = fundAddress.toLowerCase()
-  console.log('Getting metadata for:', { fundAddress: key, currentWallet })
   
   // Try memory map first
-  const stored = fundMetadataMap.get(key)
-  console.log('Found in memory:', stored)
-  
-  if (stored) {
-    // For debugging
-    if (currentWallet) {
-      console.log('Comparing wallet addresses:', {
-        storedManager: stored.manager.toLowerCase(),
-        currentWallet: currentWallet.toLowerCase(),
-        matches: stored.manager.toLowerCase() === currentWallet.toLowerCase()
-      })
-    }
+  const memoryData = fundMetadataMap.get(key)
+  if (memoryData) return memoryData
 
-    if (!currentWallet || stored.manager.toLowerCase() === currentWallet.toLowerCase()) {
-      return stored.uri
-    }
-  }
-
-  // Try localStorage as fallback
+  // Try localStorage with correct storage key
   try {
-    const storedData = JSON.parse(localStorage.getItem('fundMetadataMap') || '{}')
-    console.log('Found in localStorage:', storedData)
-    const metadata = storedData[key]
-    if (metadata) {
-      // For debugging
-      if (currentWallet) {
-        console.log('Comparing wallet addresses from localStorage:', {
-          storedManager: metadata.manager.toLowerCase(),
-          currentWallet: currentWallet.toLowerCase(),
-          matches: metadata.manager.toLowerCase() === currentWallet.toLowerCase()
-        })
-      }
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return null
 
-      if (!currentWallet || metadata.manager.toLowerCase() === currentWallet.toLowerCase()) {
-        // Also update the in-memory map
-        fundMetadataMap.set(key, metadata)
-        return metadata.uri
-      }
+    const storedData = JSON.parse(stored)
+    const metadata = storedData[key]
+    
+    if (metadata) {
+      // Update memory map
+      fundMetadataMap.set(key, metadata)
+      return metadata
     }
   } catch (error) {
     console.error('Error reading from localStorage:', error)
   }
+  
+  return null
+}
+
+export const getFundMetadataUri = (fundAddress: string, currentWallet?: string): string | undefined => {
+  const metadata = getFundMetadataFromStorage(fundAddress)
+  if (!metadata) return undefined
+
+  if (!currentWallet || metadata.manager.toLowerCase() === currentWallet.toLowerCase()) {
+    return metadata.uri
+  }
+
   return undefined
 }
 
@@ -148,52 +155,23 @@ export const listFundsForWallet = (walletAddress: string): string[] => {
 
 export const addExistingFundMetadata = (
   fundAddress: string, 
-  metadataUri: string, 
-  manager: string
+  metadata: StoredMetadata
 ) => {
   if (typeof window === 'undefined') return
 
   const key = fundAddress.toLowerCase()
-  const data = { 
-    uri: metadataUri,
-    manager: manager.toLowerCase()
-  }
-
+  
   // Update both memory and localStorage
-  fundMetadataMap.set(key, data)
+  fundMetadataMap.set(key, metadata)
   try {
     const storedData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    storedData[key] = data
+    storedData[key] = metadata
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedData))
     console.log('Added existing fund metadata:', {
       fundAddress: key,
-      manager: data.manager,
-      uri: data.uri
+      metadata
     })
   } catch (error) {
     console.error('Error adding existing fund:', error)
-  }
-}
-
-export const getFundMetadataFromStorage = (fundAddress: string) => {
-  try {
-    // Get from map first
-    const lowercaseAddress = fundAddress.toLowerCase()
-    const metadata = fundMetadataMap.get(lowercaseAddress)
-    if (metadata) {
-      return metadata
-    }
-
-    // Try local storage as fallback
-    const stored = localStorage.getItem('fundMetadata')
-    if (stored) {
-      const allMetadata = JSON.parse(stored)
-      return allMetadata[lowercaseAddress]
-    }
-
-    return null
-  } catch (error) {
-    console.error('Error getting metadata from storage:', error)
-    return null
   }
 } 

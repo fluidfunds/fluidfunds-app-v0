@@ -97,6 +97,7 @@ export default function DashboardPage() {
   const [whitelistedTokens, setWhitelistedTokens] = useState<string[]>([])
   const [batchTokens, setBatchTokens] = useState<string>('')
   const [processingBatch, setProcessingBatch] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
   const [metadataInitialized, setMetadataInitialized] = useState(false)
   const [isUserOwner, setIsUserOwner] = useState(false)
   
@@ -127,26 +128,34 @@ export default function DashboardPage() {
             fundMetadataMap.set(key.toLowerCase(), value as StoredMetadata)
           })
         }
-        setMetadataInitialized(true)
       } catch (error) {
         console.error('Error initializing metadata:', error)
-        setMetadataInitialized(true) // Still set to true to allow app to function
+      } finally {
+        setMetadataInitialized(true)
       }
     }
 
-    initMetadata()
-  }, [])
+    if (!isInitialized) {
+      initMetadata()
+      setIsInitialized(true)
+    }
+  }, [isInitialized])
 
   // Load funds only after metadata is initialized
   useEffect(() => {
     const fetchManagerFunds = async () => {
       if (!walletAddress || !metadataInitialized) {
+        console.log('Skipping fund fetch - no wallet or metadata not initialized', {
+          walletAddress,
+          metadataInitialized
+        })
         setFunds([])
         setLoading(false)
         return
       }
 
       setLoading(true)
+      console.log('Fetching funds for manager:', walletAddress)
 
       try {
         const publicClient = createPublicClient({
@@ -154,56 +163,75 @@ export default function DashboardPage() {
           transport: http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
         })
 
-        // Get fund creation events for this manager only
+        // Get fund creation events
         const fundCreationEvents = await publicClient.getLogs({
           address: FLUID_FUNDS_ADDRESS,
           event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
           args: {
-            manager: walletAddress
+            manager: walletAddress as `0x${string}`
           },
-          fromBlock: 0n
+          fromBlock: 0n,
+          toBlock: 'latest'
         })
 
-        // Sort by block number (most recent first)
-        const sortedEvents = [...fundCreationEvents].sort((a, b) => 
-          Number(b.blockNumber) - Number(a.blockNumber)
-        )
+        console.log('Found fund creation events:', {
+          events: fundCreationEvents,
+          count: fundCreationEvents.length
+        })
 
         // Process each fund
         const managerFundsData = await Promise.all(
-          sortedEvents.map(async (event) => {
-            if (!event.args) return null
+          fundCreationEvents.map(async (event) => {
+            if (!event.args) {
+              console.log('No args in event:', event)
+              return null
+            }
 
             const fundAddress = event.args.fundAddress as string
             const fundName = event.args.name as string
 
+            console.log('Processing fund:', {
+              address: fundAddress,
+              name: fundName,
+              event
+            })
+
             // Get metadata from storage
             const storedMetadata = getFundMetadataFromStorage(fundAddress)
-            if (!storedMetadata?.uri) return null
+            console.log('Stored metadata for fund:', {
+              fundAddress,
+              metadata: storedMetadata
+            })
+
+            if (!storedMetadata?.uri) {
+              console.log('No metadata URI found for fund:', fundAddress)
+              return null
+            }
 
             try {
               const ipfsMetadata = await getFundMetadata(storedMetadata.uri)
+              console.log('IPFS metadata for fund:', {
+                fundAddress,
+                metadata: ipfsMetadata
+              })
               
-              if (isValidFundMetadata(ipfsMetadata)) {
-                return {
-                  address: fundAddress,
-                  verified: true,
-                  name: fundName,
-                  manager: walletAddress,
-                  description: ipfsMetadata.description || 'Fund details coming soon...',
-                  image: ipfsMetadata.image ? getIPFSUrl(ipfsMetadata.image) : undefined,
-                  strategy: ipfsMetadata.strategy || '',
-                  socialLinks: ipfsMetadata.socialLinks || {},
-                  performanceMetrics: ipfsMetadata.performanceMetrics || {
-                    tvl: '0',
-                    returns: '0',
-                    investors: 0
-                  },
-                  updatedAt: ipfsMetadata.updatedAt || Date.now(),
-                  metadataUri: storedMetadata.uri
-                }
+              return {
+                address: fundAddress,
+                verified: true,
+                name: fundName,
+                manager: walletAddress,
+                description: ipfsMetadata.description || 'Fund details coming soon...',
+                image: ipfsMetadata.image ? getIPFSUrl(ipfsMetadata.image) : undefined,
+                strategy: ipfsMetadata.strategy || '',
+                socialLinks: ipfsMetadata.socialLinks || {},
+                performanceMetrics: ipfsMetadata.performanceMetrics || {
+                  tvl: '0',
+                  returns: '0',
+                  investors: 0
+                },
+                updatedAt: ipfsMetadata.updatedAt || Date.now(),
+                metadataUri: storedMetadata.uri
               }
-              return null
             } catch (error) {
               console.error(`Failed to fetch metadata for fund ${fundAddress}:`, error)
               return null
@@ -212,6 +240,10 @@ export default function DashboardPage() {
         )
 
         const validFunds = processManagerFundsData(managerFundsData)
+        console.log('Processed funds:', {
+          total: validFunds.length,
+          funds: validFunds
+        })
         setFunds(validFunds)
 
       } catch (error) {
@@ -222,7 +254,9 @@ export default function DashboardPage() {
       }
     }
 
-    fetchManagerFunds()
+    if (metadataInitialized) {
+      fetchManagerFunds()
+    }
   }, [walletAddress, metadataInitialized])
 
   // Add effect to fetch whitelisted tokens on load
@@ -243,7 +277,7 @@ export default function DashboardPage() {
     fetchWhitelistedTokens()
   }, [isOwner, getAllWhitelistedTokens])
 
-  // Add useEffect to check ownership
+  // Update the ownership check effect
   useEffect(() => {
     const checkOwnership = async () => {
       if (isOwner && walletAddress) {
@@ -269,43 +303,39 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCreateStream = async (receiver: string, flowRate: string) => {
-    try {
-      await createStream({ receiver, flowRate })
-      toast.success('Stream created successfully')
-    } catch (error) {
-      console.error('Failed to create stream:', error)
-      toast.error('Failed to create stream')
-    }
+  const handleCreateStream = async () => {
+    console.log('Streaming functionality temporarily disabled')
   }
 
-  const handleDeleteStream = async (receiver: string) => {
-    try {
-      await deleteStream(receiver)
-      toast.success('Stream deleted successfully')
-    } catch (error) {
-      console.error('Failed to delete stream:', error)
-      toast.error('Failed to delete stream')
+  const handleDeleteStream = async (receiver?: string) => {
+    if (receiver) {
+      console.log('Streaming functionality temporarily disabled for receiver:', receiver)
+    } else {
+      console.log('Streaming functionality temporarily disabled')
     }
   }
 
   const handleWhitelistToken = async (tokenAddress: string, status: boolean) => {
     try {
       // Ensure the address is properly formatted
-      const formattedAddress = getAddress(tokenAddress) // This will ensure it's a valid `0x${string}`
-      await setTokenWhitelisted(formattedAddress, status)
+      const formattedAddress = getAddress(tokenAddress) as `0x${string}` // Cast to correct type
+      const result = await setTokenWhitelisted(formattedAddress, status)
       
-      // Refresh whitelist status
-      const tokens = await getAllWhitelistedTokens()
-      const isWhitelisted = tokens.includes(formattedAddress)
-      
-      if (isWhitelisted) {
-        setWhitelistedTokens(prev => [...prev, formattedAddress])
+      if (result) {
+        // Refresh whitelist status
+        const tokens = await getAllWhitelistedTokens()
+        const isWhitelisted = tokens.includes(formattedAddress)
+        
+        if (isWhitelisted) {
+          setWhitelistedTokens(prev => [...prev, formattedAddress])
+        } else {
+          setWhitelistedTokens(prev => prev.filter(t => t !== formattedAddress))
+        }
+        
+        toast.success(`Token ${status ? 'whitelisted' : 'removed from whitelist'}`)
       } else {
-        setWhitelistedTokens(prev => prev.filter(t => t !== formattedAddress))
+        toast.error('Token whitelist functionality is temporarily disabled')
       }
-      
-      toast.success(`Token ${status ? 'whitelisted' : 'removed from whitelist'}`)
     } catch (error) {
       console.error('Failed to update token whitelist:', error)
       toast.error('Invalid token address or failed to update whitelist')
@@ -591,10 +621,10 @@ export default function DashboardPage() {
                               className="text-red-500 hover:text-red-400 text-sm flex items-center gap-1 
                                        px-3 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
                             >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M6 18L18 6M6 6l12 12"/>
                               </svg>
-                              Stop
+                              Stop Stream
                             </button>
                           </div>
                         </div>
@@ -606,108 +636,6 @@ export default function DashboardPage() {
                     {superfluidLoading ? 'Loading streams...' : 'No active streams'}
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Token Management Card - Enhanced */}
-            {showManagerFeatures && isUserOwner && (
-              <div className="p-6 rounded-xl bg-gradient-to-br from-white/[0.02] to-white/[0.05] 
-                            border border-white/[0.08] backdrop-blur-sm hover:border-white/[0.15] 
-                            transition-all duration-300 group">
-                <div className="flex items-center gap-2 mb-6">
-                  <span className="w-8 h-8 rounded-lg bg-fluid-primary/10 flex items-center justify-center">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-fluid-primary">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </span>
-                  <h2 className="text-lg font-medium">Token Management</h2>
-                </div>
-
-                {/* Single Token Whitelist */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Token Address"
-                      value={tokenAddress}
-                      onChange={(e) => setTokenAddress(e.target.value)}
-                      className="flex-1 px-4 py-3 rounded-lg bg-white/[0.03] border border-white/[0.05] 
-                               text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary 
-                               transition-all duration-200"
-                    />
-                    <button
-                      onClick={() => handleWhitelistToken(tokenAddress, true)}
-                      className="px-4 py-3 rounded-lg bg-fluid-primary text-white font-medium 
-                               hover:bg-fluid-primary/90 transition-all duration-200 flex items-center gap-2"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5"/>
-                      </svg>
-                      Whitelist
-                    </button>
-                  </div>
-                </div>
-
-                {/* Batch Token Whitelist */}
-                <div className="space-y-4">
-                  <div className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.05]">
-                    <h3 className="text-sm font-medium mb-2">Batch Whitelist Tokens</h3>
-                    <textarea
-                      placeholder="Enter token addresses (one per line)"
-                      value={batchTokens}
-                      onChange={(e) => setBatchTokens(e.target.value)}
-                      className="w-full h-32 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.08] 
-                               text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary 
-                               transition-all duration-200 mb-3"
-                    />
-                    <button
-                      onClick={handleBatchWhitelist}
-                      disabled={!batchTokens.trim() || processingBatch}
-                      className="w-full px-4 py-2 rounded-lg bg-fluid-primary text-white font-medium 
-                               hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50 
-                               disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {processingBatch ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div>
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M20 6L9 17l-5-5"/>
-                          </svg>
-                          Batch Whitelist
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Whitelisted Tokens List */}
-                  {whitelistedTokens.length > 0 && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium mb-2">Whitelisted Tokens</h3>
-                      <div className="space-y-2">
-                        {whitelistedTokens.map((token, index) => (
-                          <div 
-                            key={index}
-                            className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]"
-                          >
-                            <span className="text-sm">{token.slice(0, 6)}...{token.slice(-4)}</span>
-                            <button
-                              onClick={() => handleWhitelistToken(token, false)}
-                              className="text-red-500 hover:text-red-400 transition-colors"
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 

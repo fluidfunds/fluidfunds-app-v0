@@ -8,7 +8,8 @@ import Image from 'next/image'
 import type { FundMetadata } from '@/app/types/fund'
 import { toast } from 'sonner'
 import { setFundMetadataUri, addExistingFundMetadata } from '@/app/utils/fundMetadataMap'
-import { useWalletClient } from 'wagmi'
+import { useWalletClient, usePublicClient } from 'wagmi'
+import { FLUID_FUNDS_ADDRESS } from '@/app/config/contracts'
 
 interface CreateFundModalProps {
   isOpen: boolean
@@ -32,8 +33,9 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
     telegram: ''
   })
 
-  const { createFund, getFundAddressFromReceipt } = useFluidFunds()
+  const { createFund } = useFluidFunds()
   const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient()
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -49,84 +51,42 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Add wallet and public client checks at the start
+    if (!walletClient?.account) {
+      toast.error('Please connect your wallet')
+      return
+    }
+
+    if (!publicClient) {
+      toast.error('Network client not initialized')
+      return
+    }
+
     setLoading(true)
-    setUploadProgress(0)
 
     try {
-      if (!walletClient?.account) {
-        throw new Error('No wallet connected')
-      }
+      // Show creating fund toast
+      const creatingToast = toast.loading('Creating fund...')
 
-      // Validate inputs
-      if (!name.trim()) {
-        throw new Error('Fund name is required')
-      }
-
-      const percentage = parseInt(profitSharingPercentage)
-      if (isNaN(percentage) || percentage <= 0 || percentage > 100) {
-        throw new Error('Profit sharing percentage must be between 1 and 100')
-      }
-
-      const endDate = new Date(subscriptionEndDate)
-      const subscriptionEndTime = Math.floor(endDate.getTime() / 1000)
-      const now = Math.floor(Date.now() / 1000)
-      if (subscriptionEndTime <= now) {
-        throw new Error('Subscription end time must be in the future')
-      }
-
-      const minAmount = parseFloat(minInvestmentAmount)
-      if (isNaN(minAmount) || minAmount <= 0) {
-        throw new Error('Minimum investment amount must be greater than 0')
-      }
-
-      console.log('Creating fund with validated params:', {
-        name,
-        profitSharingPercentage: percentage,
-        subscriptionEndTime,
-        minInvestmentAmount: minAmount.toString()
-      })
-
-      // First create the fund
-      const hash = await createFund({
-        name,
-        profitSharingPercentage: percentage,
-        subscriptionEndTime,
-        minInvestmentAmount: minAmount.toString()
-      })
-      console.log('Fund creation transaction hash:', hash)
-
-      // Get the fund's address from the transaction receipt
-      let fundAddress: string
-      try {
-        fundAddress = await getFundAddressFromReceipt(hash)
-        console.log('Fund address from receipt:', fundAddress)
-      } catch (error) {
-        console.error('Error getting fund address:', error)
-        toast.error('Fund created but address not found. Please check the transaction.')
-        return
-      }
-
-      const managerAddress = walletClient.account.address
-      console.log('Fund created:', { fundAddress, managerAddress })
-
-      // Upload image to IPFS if exists
-      let imageUrl = ''
+      // First, upload image to IPFS if exists
+      let imageHash = ''
       if (fileInputRef.current?.files?.[0]) {
+        toast.loading('Uploading image to IPFS...', { id: creatingToast })
         const file = fileInputRef.current.files[0]
         const progress = (loaded: number, total: number) => {
           setUploadProgress((loaded / total) * 100)
         }
-        const imageHash = await uploadToIPFSWithProgress(file, progress)
-        imageUrl = `ipfs://${imageHash}`
-        console.log('Uploaded image URL:', imageUrl)
+        imageHash = await uploadToIPFSWithProgress(file, progress)
       }
 
-      // Prepare metadata for IPFS
+      // Prepare and upload metadata - wallet is guaranteed to be defined here
+      toast.loading('Preparing fund metadata...', { id: creatingToast })
       const metadata: FundMetadata = {
         name,
         description,
-        image: imageUrl,
-        manager: managerAddress,
+        image: imageHash ? `ipfs://${imageHash}` : '',
+        manager: walletClient.account.address, // Safe to use after check
         strategy,
         socialLinks: {
           twitter: socialLinks.twitter,
@@ -142,34 +102,94 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
       }
 
       // Upload metadata to IPFS
-      console.log('Uploading metadata to IPFS:', metadata)
+      toast.loading('Uploading metadata to IPFS...', { id: creatingToast })
       const metadataHash = await uploadFundMetadata(metadata)
       const metadataUri = `ipfs://${metadataHash}`
-      console.log('Uploaded metadata URI:', metadataUri)
 
-      // Store the metadata URI mapping
-      console.log('Storing metadata mapping:', {
+      // Create fund with contract
+      toast.loading('Creating fund on blockchain...', { id: creatingToast })
+      const hash = await createFund({
+        name,
+        profitSharingPercentage: parseInt(profitSharingPercentage),
+        subscriptionEndTime: Math.floor(new Date(subscriptionEndDate).getTime() / 1000),
+        minInvestmentAmount: minInvestmentAmount
+      })
+
+      // Wait for transaction - publicClient is now guaranteed to be defined
+      toast.loading('Waiting for transaction confirmation...', { id: creatingToast })
+      const receipt = await publicClient.waitForTransactionReceipt({ hash })
+
+      // Get fund address from FundCreated event
+      const fundCreatedEvent = receipt.logs.find(log => {
+        // Check if this log is from our contract
+        return log.address.toLowerCase() === FLUID_FUNDS_ADDRESS.toLowerCase()
+      })
+
+      if (!fundCreatedEvent) {
+        console.error('Transaction logs:', receipt.logs)
+        throw new Error('Fund creation event not found in transaction logs')
+      }
+
+      // Get the fund address from the event data
+      const fundAddress = fundCreatedEvent.topics[1] // The fund address should be the first indexed parameter
+        ? `0x${fundCreatedEvent.topics[1].slice(26)}` // Convert to checksum address format
+        : fundCreatedEvent.address
+
+      console.log('Fund creation details:', {
+        transactionHash: hash,
+        fundAddress,
+        logs: receipt.logs,
+        event: fundCreatedEvent,
+        contractAddress: FLUID_FUNDS_ADDRESS
+      })
+
+      // Verify the fund address
+      if (!fundAddress) {
+        throw new Error('Could not extract fund address from event')
+      }
+
+      // Store metadata
+      toast.loading('Storing fund metadata...', { id: creatingToast })
+      setFundMetadataUri(
         fundAddress,
         metadataUri,
-        managerAddress
-      })
-      setFundMetadataUri(fundAddress, metadataUri, managerAddress)
-
-      // Store metadata URI in local storage
-      addExistingFundMetadata(
-        fundAddress,
-        `ipfs://${metadataHash}`,
-        managerAddress
+        walletClient.account.address
       )
+      
+      addExistingFundMetadata(fundAddress, {
+        uri: metadataUri,
+        manager: walletClient.account.address
+      })
 
+      // Success!
+      toast.success('Fund created successfully!', { id: creatingToast })
       onClose()
-      toast.success('Fund created successfully!')
+      
+      // Force a page refresh after a short delay to ensure metadata is loaded
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000) // Increased delay to 2 seconds
+
+      // Reset form
+      setName('')
+      setDescription('')
+      setProfitSharingPercentage('')
+      setSubscriptionEndDate('')
+      setMinInvestmentAmount('')
+      setPreviewImage(null)
+      setStrategy('')
+      setSocialLinks({
+        twitter: '',
+        discord: '',
+        telegram: ''
+      })
+      setUploadProgress(0)
+
     } catch (error) {
       console.error('Error creating fund:', error)
-      toast.error(error instanceof Error ? error.message : 'Error creating fund')
+      toast.error('Failed to create fund')
     } finally {
       setLoading(false)
-      setUploadProgress(0)
     }
   }
 

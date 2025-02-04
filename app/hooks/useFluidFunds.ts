@@ -42,62 +42,30 @@ export function useFluidFunds() {
     }
   }, [publicClient])
 
-  // Set token whitelist status
-  const setTokenWhitelisted = useCallback(async (tokenAddress: string, status: boolean): Promise<boolean> => {
-    if (!walletClient || !publicClient) throw new Error('Wallet not connected')
+  const setTokenWhitelisted = useCallback(async (
+    tokenAddress: `0x${string}`, 
+    status: boolean
+  ): Promise<boolean> => {
+    console.log('Token whitelist functionality temporarily disabled', { tokenAddress, status })
+    return false
+  }, [])
 
-    try {
-      const { request } = await publicClient.simulateContract({
-        address: FLUID_FUNDS_ADDRESS,
-        abi: FLUID_FUNDS_ABI,
-        functionName: 'setTokenWhitelisted',
-        args: [getAddress(tokenAddress), status],
-        account: walletClient.account
-      })
+  const isOwner = useCallback(async (address?: string): Promise<boolean> => {
+    if (!publicClient || !address) return false
 
-      const hash = await walletClient.writeContract(request)
-      await publicClient.waitForTransactionReceipt({ hash })
-
-      return true
-    } catch (error) {
-      console.error('Error setting token whitelist:', error)
-      throw error
-    }
-  }, [publicClient, walletClient])
-
-  // Get USDCx address
-  const getUSDCxAddress = useCallback(async (): Promise<`0x${string}`> => {
-    if (!publicClient) throw new Error('Public client not initialized')
-
-    try {
-      return await publicClient.readContract({
-        address: FLUID_FUNDS_ADDRESS,
-        abi: FLUID_FUNDS_ABI,
-        functionName: 'usdcx'
-      })
-    } catch (error) {
-      console.error('Error getting USDCx address:', error)
-      throw error
-    }
-  }, [publicClient])
-
-  // Check if address is owner
-  const isOwner = useCallback(async (fundAddress: string): Promise<boolean> => {
-    if (!walletClient?.account || !publicClient) return false
-    
     try {
       const owner = await publicClient.readContract({
-        address: getAddress(fundAddress),
+        address: FLUID_FUNDS_ADDRESS,
         abi: FLUID_FUNDS_ABI,
         functionName: 'owner'
       })
       
-      return owner.toLowerCase() === walletClient.account.address.toLowerCase()
+      return owner.toLowerCase() === address.toLowerCase()
     } catch (error) {
       console.error('Error checking ownership:', error)
       return false
     }
-  }, [publicClient, walletClient?.account])
+  }, [publicClient])
 
   const createFund = useCallback(async ({
     name,
@@ -135,22 +103,7 @@ export function useFluidFunds() {
     }
   }, [publicClient, walletClient])
 
-  // Get fund address from transaction receipt
-  const getFundAddressFromReceipt = useCallback(async (hash: `0x${string}`): Promise<string> => {
-    if (!publicClient) throw new Error('Public client not initialized')
-
-    try {
-      const receipt = await publicClient.waitForTransactionReceipt({ hash })
-      const event = receipt.logs[0] // Assuming FundCreated is first event
-      if (!event) throw new Error('No event found in transaction')
-      return event.address
-    } catch (error) {
-      console.error('Error getting fund address from receipt:', error)
-      throw error
-    }
-  }, [publicClient])
-
-  const getAllWhitelistedTokens = useCallback(async (): Promise<readonly `0x${string}`[]> => {
+  const getAllWhitelistedTokens = useCallback(async (): Promise<`0x${string}`[]> => {
     if (!publicClient) return []
 
     try {
@@ -158,7 +111,8 @@ export function useFluidFunds() {
         address: FLUID_FUNDS_ADDRESS,
         abi: FLUID_FUNDS_ABI,
         functionName: 'getWhitelistedTokens'
-      })
+      }) as `0x${string}`[]
+
       return tokens
     } catch (error) {
       console.error('Error getting whitelisted tokens:', error)
@@ -241,8 +195,6 @@ export function useFluidFunds() {
     getAllFundsWithMetadata,
     getAllWhitelistedTokens,
     setTokenWhitelisted,
-    getUSDCxAddress,
-    getFundAddressFromReceipt,
     isOwner
   }
 }
