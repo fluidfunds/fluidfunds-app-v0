@@ -21,25 +21,34 @@ const colors = {
   primary: 'rgb(37,202,172)'      // Our consistent teal for icons and interactive elements
 }
 
+type UserRole = 'manager' | 'investor' | null
+
 const ConnectPage = () => {
   const router = useRouter()
+  const [selectedRole, setSelectedRole] = useState<UserRole>(null)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string>('')
 
-  const handleConnect = async (type: 'metamask' | 'walletconnect' | 'coinbase') => {
+  const handleConnect = async () => {
+    if (!selectedRole) return
+    setConnecting(true)
+
     try {
-      setConnecting(true)
-      setError('')
-      switch (type) {
-        case 'metamask':
-          const { address } = await connectWallet()
-          console.log('Connected with address:', address)
-          router.push('/')
-          break
+      if (typeof window.ethereum !== 'undefined') {
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_requestAccounts' 
+        }) as string[]
+        
+        if (accounts.length > 0) {
+          // Store role in localStorage
+          localStorage.setItem('userRole', selectedRole)
+          router.push('/dashboard')
+        }
+      } else {
+        throw new Error('Please install MetaMask')
       }
-    } catch (err) {
-      console.error('Connection error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to connect wallet')
+    } catch (error) {
+      console.error('Error connecting:', error)
     } finally {
       setConnecting(false)
     }
@@ -120,7 +129,7 @@ const ConnectPage = () => {
             <div className="text-center">
               <h2 className="text-[20px] font-medium mb-2">Connect Wallet</h2>
               <p className="text-[14px] text-white/60">
-                Connect your wallet to access FluidFunds
+                Select your role to get started with the best experience for your needs
               </p>
             </div>
 
@@ -134,42 +143,65 @@ const ConnectPage = () => {
               </motion.div>
             )}
 
-            <div className="space-y-2">
-              <motion.button 
-                onClick={() => handleConnect('metamask')}
-                disabled={connecting}
-                whileHover={{ scale: 1.005 }}
-                whileTap={{ scale: 0.995 }}
-                className="group w-full p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] 
-                         hover:bg-gradient-to-r hover:from-[#FF336608] hover:to-[#CB5EEE08]
-                         hover:border-[#FF336618] transition-all duration-200 
-                         flex items-center justify-between"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => setSelectedRole('manager')}
+                className={`p-6 rounded-xl border transition-all duration-200 text-left
+                  ${selectedRole === 'manager' 
+                    ? 'bg-fluid-primary/10 border-fluid-primary' 
+                    : 'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]'
+                  }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#F6851B]/5 flex items-center justify-center">
-                    <Image 
-                      src="/wallets/metamask.svg" 
-                      alt="MetaMask"
-                      width={18}
-                      height={18}
-                      className="w-4.5 h-4.5"
-                    />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-[14px] font-medium">
-                      {connecting ? 'Connecting...' : 'MetaMask'}
-                    </div>
-                    <div className="text-[13px] text-white/60">
-                      Connect to your MetaMask wallet
-                    </div>
-                  </div>
-                </div>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/40 group-hover:text-white/60">
-                  <path d="M6 12l4-4-4-4" />
-                </svg>
-              </motion.button>
+                <h3 className="text-lg font-medium mb-2">Fund Manager</h3>
+                <p className="text-sm text-white/60">
+                  Create and manage investment funds, set strategies, and grow your community
+                </p>
+              </button>
 
-              {/* Add other wallet buttons with same styling */}
+              <button
+                onClick={() => setSelectedRole('investor')}
+                className={`p-6 rounded-xl border transition-all duration-200 text-left
+                  ${selectedRole === 'investor' 
+                    ? 'bg-fluid-primary/10 border-fluid-primary' 
+                    : 'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05]'
+                  }`}
+              >
+                <h3 className="text-lg font-medium mb-2">Fund Investor</h3>
+                <p className="text-sm text-white/60">
+                  Discover top-performing funds, stream investments, and track your portfolio
+                </p>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <button
+                onClick={handleConnect}
+                disabled={!selectedRole || connecting}
+                className="w-full max-w-[300px] h-12 rounded-xl bg-fluid-primary text-white font-medium 
+                         disabled:opacity-50 disabled:cursor-not-allowed hover:bg-fluid-primary/90 
+                         transition-colors flex items-center justify-center gap-2"
+              >
+                {connecting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div>
+                    Connecting...
+                  </>
+                ) : (
+                  'Connect Wallet'
+                )}
+              </button>
+
+              <p className="text-sm text-white/40">
+                Don't have a wallet?{' '}
+                <a 
+                  href="https://metamask.io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-fluid-primary hover:underline"
+                >
+                  Get MetaMask
+                </a>
+              </p>
             </div>
 
             <div className="text-center">
