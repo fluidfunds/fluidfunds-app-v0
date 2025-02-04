@@ -107,6 +107,7 @@ export const uploadToIPFS = async (file: File): Promise<string> => {
 }
 
 // Upload metadata to IPFS
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const uploadFundMetadata = async (metadata: any): Promise<string> => {
   try {
     const response = await axios.post('/api/metadata', metadata)
@@ -118,6 +119,7 @@ export const uploadFundMetadata = async (metadata: any): Promise<string> => {
 }
 
 // Helper function to validate metadata format
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
 function isValidMetadata(data: any): data is FundMetadata {
   return (
     typeof data === 'object' &&
@@ -129,6 +131,7 @@ function isValidMetadata(data: any): data is FundMetadata {
 }
 
 // Helper function for default metadata
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getDefaultMetadata = (): FundMetadata => ({
   name: 'Untitled Fund',
   description: 'Metadata temporarily unavailable',
