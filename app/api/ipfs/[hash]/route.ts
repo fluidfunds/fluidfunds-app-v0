@@ -1,9 +1,18 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest, { params }: { params: { hash: string } }) {
+type RouteContext = {
+  params: {
+    hash: string;
+  };
+};
+
+export async function GET(
+  _request: NextRequest,
+  context: RouteContext
+) {
   try {
-    const { hash } = params
+    const { hash } = context.params
     const ipfsGatewayUrl = `https://ipfs.io/ipfs/${hash}`
 
     // Fetch from IPFS gateway
