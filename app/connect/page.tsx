@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-no-comment-textnodes */
 'use client'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
@@ -192,14 +191,10 @@ const ConnectPage = () => {
                   </>
                 ) : (
                   'Connect Wallet'
-                // eslint-disable-next-line react/jsx-no-comment-textnodes
                 )}
-              // eslint-disable-next-line react/jsx-no-comment-textnodes, react/jsx-no-comment-textnodes, react/jsx-no-comment-textnodes
               </button>
 
-              // eslint-disable-next-line react/jsx-no-comment-textnodes, react/jsx-no-comment-textnodes, react/jsx-no-comment-textnodes, react/jsx-no-comment-textnodes
               <p className="text-sm text-white/40">
-                // eslint-disable-next-line react/no-unescaped-entities
                 Don&apos;t have a wallet?{' '}
                 <a 
                   href="https://metamask.io" 

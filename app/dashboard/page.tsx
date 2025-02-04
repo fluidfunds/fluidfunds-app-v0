@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -99,6 +98,7 @@ export default function DashboardPage() {
   const [batchTokens, setBatchTokens] = useState<string>('')
   const [processingBatch, setProcessingBatch] = useState(false)
   const [metadataInitialized, setMetadataInitialized] = useState(false)
+  const [isUserOwner, setIsUserOwner] = useState(false)
   
   const { getAllFundsWithMetadata, setTokenWhitelisted, isOwner, loading: fundsLoading, getAllWhitelistedTokens } = useFluidFunds()
   const { 
@@ -242,6 +242,23 @@ export default function DashboardPage() {
 
     fetchWhitelistedTokens()
   }, [isOwner, getAllWhitelistedTokens])
+
+  // Add useEffect to check ownership
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (isOwner && walletAddress) {
+        try {
+          const result = await isOwner(walletAddress)
+          setIsUserOwner(result)
+        } catch (error) {
+          console.error('Error checking ownership:', error)
+          setIsUserOwner(false)
+        }
+      }
+    }
+    
+    checkOwnership()
+  }, [isOwner, walletAddress])
 
   const handleDisconnect = async () => {
     try {
@@ -593,7 +610,7 @@ export default function DashboardPage() {
             )}
 
             {/* Token Management Card - Enhanced */}
-            {showManagerFeatures && isOwner && (
+            {showManagerFeatures && isUserOwner && (
               <div className="p-6 rounded-xl bg-gradient-to-br from-white/[0.02] to-white/[0.05] 
                             border border-white/[0.08] backdrop-blur-sm hover:border-white/[0.15] 
                             transition-all duration-300 group">
@@ -881,4 +898,4 @@ const processManagerFundsData = (fundsData: any[]): FundInfo[] => {
         investors: fund.performanceMetrics?.investors || 0
       }
     }))
-} 
+}
