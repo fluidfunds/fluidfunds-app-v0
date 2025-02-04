@@ -1,78 +1,39 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import axios from 'axios'
 
 const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
 const PINATA_JWT = process.env.PINATA_JWT
 
-export async function GET(
-  request: Request,
-  { params }: { params: { hash: string } }
-) {
-  const hash = params.hash
+interface RouteParams {
+  params: {
+    hash: string
+  }
+}
 
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const pinataUrl = `${PINATA_GATEWAY}${hash}`
-    const response = await axios.get(pinataUrl, {
-      timeout: 10000,
+    const { hash } = params
+    const ipfsGatewayUrl = `https://ipfs.io/ipfs/${hash}`
+
+    // Fetch from IPFS gateway
+    const response = await fetch(ipfsGatewayUrl)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch from IPFS: ${response.statusText}`)
+    }
+
+    // Get content type from response
+    const contentType = response.headers.get('content-type') || 'application/octet-stream'
+
+    // Return the response with proper content type
+    return new NextResponse(response.body, {
       headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${PINATA_JWT}`
+        'content-type': contentType,
+        'cache-control': 'public, max-age=31536000, immutable'
       }
     })
 
-    if (response.data) {
-      if (response.data.image) {
-        const imageHash = response.data.image.replace('ipfs://', '')
-        response.data.image = `${PINATA_GATEWAY}${imageHash}`
-      }
-      return NextResponse.json(response.data)
-    }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    // Try fallback gateways silently without logging
-    const FALLBACK_GATEWAYS = [
-      'https://cloudflare-ipfs.com/ipfs/',
-      'https://ipfs.io/ipfs/',
-      'https://nftstorage.link/ipfs/'
-    ]
-
-    for (const gateway of FALLBACK_GATEWAYS) {
-      try {
-        const url = `${gateway}${hash}`
-        const response = await axios.get(url, {
-          timeout: 10000,
-          headers: {
-            'Accept': 'application/json'
-          }
-        })
-
-        if (response.data) {
-          // Transform image URLs
-          if (response.data.image) {
-            const imageHash = response.data.image.replace('ipfs://', '')
-            response.data.image = `${PINATA_GATEWAY}${imageHash}`
-          }
-          return NextResponse.json(response.data)
-        }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        continue
-      }
-    }
+    console.error('Error fetching from IPFS:', error)
+    return new NextResponse('Error fetching from IPFS', { status: 500 })
   }
-
-  return NextResponse.json({
-    name: 'Untitled Fund',
-    description: 'Fund details temporarily unavailable',
-    image: '',
-    manager: '',
-    strategy: '',
-    socialLinks: {},
-    performanceMetrics: {
-      tvl: '0',
-      returns: '0',
-      investors: 0
-    },
-    updatedAt: Date.now()
-  }, { status: 200 })
 } 
