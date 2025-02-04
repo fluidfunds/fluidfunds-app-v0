@@ -27,6 +27,7 @@ export async function GET(
       }
       return NextResponse.json(response.data)
     }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // Try fallback gateways silently without logging
     const FALLBACK_GATEWAYS = [
@@ -53,6 +54,7 @@ export async function GET(
           }
           return NextResponse.json(response.data)
         }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         continue
       }

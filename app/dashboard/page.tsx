@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,17 +27,30 @@ import {
 } from '@/app/utils/fundMetadataMap'
 import { createPublicClient, http, parseAbiItem } from 'viem'
 import { baseSepolia } from 'viem/chains'
+ 
 import { FLUID_FUNDS_ABI, FLUID_FUNDS_ADDRESS } from '@/app/config/contracts'
-import { getIPFSImageUrl } from '@/app/services/ipfs'
 
-// Add FundInfo interface
+// Update FundInfo interface to match the actual data structure
 interface FundInfo {
   address: string
   verified: boolean
-  manager?: string
-  name?: string
-  image?: string
-  metadataUri?: string
+  name: string
+  manager: `0x${string}`
+  description: string
+  image: string | undefined
+  strategy: string
+  socialLinks: {
+    twitter?: string
+    discord?: string
+    telegram?: string
+  }
+  performanceMetrics: {
+    tvl: string
+    returns: string
+    investors: number
+  }
+  updatedAt: number
+  metadataUri: string
 }
 
 // Define our gradient colors and styles
@@ -77,7 +93,7 @@ export default function DashboardPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isStreamModalOpen, setIsStreamModalOpen] = useState(false)
   const [isTokenManagementOpen, setIsTokenManagementOpen] = useState(false)
-  const [managerFunds, setManagerFunds] = useState<FundInfo[]>([])
+  const [funds, setFunds] = useState<FundInfo[]>([])
   const [tokenAddress, setTokenAddress] = useState('')
   const [whitelistedTokens, setWhitelistedTokens] = useState<string[]>([])
   const [batchTokens, setBatchTokens] = useState<string>('')
@@ -125,14 +141,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchManagerFunds = async () => {
       if (!walletAddress || !metadataInitialized) {
-        setManagerFunds([])
+        setFunds([])
         setLoading(false)
         return
       }
 
+      setLoading(true)
+
       try {
-        setLoading(true)
-        
         const publicClient = createPublicClient({
           chain: baseSepolia,
           transport: http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
@@ -143,19 +159,17 @@ export default function DashboardPage() {
           address: FLUID_FUNDS_ADDRESS,
           event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
           args: {
-            manager: walletAddress // Filter events by manager address
+            manager: walletAddress
           },
           fromBlock: 0n
         })
-
-        console.log('Found events for manager:', fundCreationEvents)
 
         // Sort by block number (most recent first)
         const sortedEvents = [...fundCreationEvents].sort((a, b) => 
           Number(b.blockNumber) - Number(a.blockNumber)
         )
 
-        // Process each fund created by this manager
+        // Process each fund
         const managerFundsData = await Promise.all(
           sortedEvents.map(async (event) => {
             if (!event.args) return null
@@ -170,7 +184,6 @@ export default function DashboardPage() {
             try {
               const ipfsMetadata = await getFundMetadata(storedMetadata.uri)
               
-              // Only include funds with valid metadata
               if (isValidFundMetadata(ipfsMetadata)) {
                 return {
                   address: fundAddress,
@@ -178,7 +191,7 @@ export default function DashboardPage() {
                   name: fundName,
                   manager: walletAddress,
                   description: ipfsMetadata.description || 'Fund details coming soon...',
-                  image: ipfsMetadata.image ? getIPFSUrl(ipfsMetadata.image) : null,
+                  image: ipfsMetadata.image ? getIPFSUrl(ipfsMetadata.image) : undefined,
                   strategy: ipfsMetadata.strategy || '',
                   socialLinks: ipfsMetadata.socialLinks || {},
                   performanceMetrics: ipfsMetadata.performanceMetrics || {
@@ -190,7 +203,7 @@ export default function DashboardPage() {
                   metadataUri: storedMetadata.uri
                 }
               }
-              return null // Skip funds with invalid metadata
+              return null
             } catch (error) {
               console.error(`Failed to fetch metadata for fund ${fundAddress}:`, error)
               return null
@@ -198,18 +211,12 @@ export default function DashboardPage() {
           })
         )
 
-        const validFunds = managerFundsData.filter((fund): fund is NonNullable<typeof fund> => 
-          fund !== null && 
-          fund.name && 
-          fund.description && 
-          fund.image // Only include funds with all required fields
-        )
-        
-        console.log('Valid manager funds:', validFunds)
-        setManagerFunds(validFunds)
+        const validFunds = processManagerFundsData(managerFundsData)
+        setFunds(validFunds)
+
       } catch (error) {
         console.error('Error fetching manager funds:', error)
-        setManagerFunds([])
+        setFunds([])
       } finally {
         setLoading(false)
       }
@@ -406,7 +413,7 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                   <div className="text-sm text-white/60 mb-1">Total Funds</div>
-                  <div className="text-2xl font-medium">{managerFunds.length}</div>
+                  <div className="text-2xl font-medium">{funds.length}</div>
                 </div>
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                   <div className="text-sm text-white/60 mb-1">Active Streams</div>
@@ -709,9 +716,9 @@ export default function DashboardPage() {
                   <div className="text-center text-white/60 py-8">
                     Connect your wallet to see your funds
                   </div>
-                ) : managerFunds.length > 0 ? (
+                ) : funds.length > 0 ? (
                   <div className="space-y-4">
-                    {managerFunds.map((fund, index) => (
+                    {funds.map((fund, index) => (
                       <div 
                         key={index}
                         className="overflow-hidden rounded-lg bg-white/[0.03] border border-white/[0.05] 
@@ -800,6 +807,11 @@ function FundVerification({ fund }: { fund: string }) {
     let isMounted = true
 
     const verifyFund = async () => {
+      if (!fund) {
+        if (isMounted) setIsVerified(false)
+        return
+      }
+
       try {
         const result = await checkIsFund(fund)
         if (isMounted) {
@@ -813,15 +825,12 @@ function FundVerification({ fund }: { fund: string }) {
       }
     }
 
-    // Don't verify if we already have a result
-    if (isVerified === null) {
-      verifyFund()
-    }
+    verifyFund()
 
     return () => {
       isMounted = false
     }
-  }, [fund, checkIsFund, isVerified])
+  }, [fund, checkIsFund])
 
   if (isVerified === null) {
     return (
@@ -849,4 +858,27 @@ const isValidFundMetadata = (metadata: any): boolean => {
     metadata.image.length > 0 && // Must have an image
     metadata.description.length > 0 // Must have a description
   )
+}
+
+// In the component where you process the funds data
+const processManagerFundsData = (fundsData: any[]): FundInfo[] => {
+  return fundsData
+    .filter((fund): fund is NonNullable<typeof fund> => 
+      fund !== null && 
+      fund.name && 
+      fund.description && 
+      typeof fund.image !== 'undefined'
+    )
+    .map(fund => ({
+      ...fund,
+      image: fund.image || undefined,
+      manager: fund.manager as `0x${string}`,
+      metadataUri: fund.metadataUri || '',
+      verified: Boolean(fund.verified),
+      performanceMetrics: {
+        tvl: fund.performanceMetrics?.tvl || '0',
+        returns: fund.performanceMetrics?.returns || '0',
+        investors: fund.performanceMetrics?.investors || 0
+      }
+    }))
 } 

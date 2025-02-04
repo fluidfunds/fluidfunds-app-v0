@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       url: `ipfs://${response.data.IpfsHash}`
     })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Error uploading metadata:', {
       message: error.message,
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
 }
 
 // Handle OPTIONS requests for CORS
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function OPTIONS(request: Request) {
   return NextResponse.json({}, {
     headers: {

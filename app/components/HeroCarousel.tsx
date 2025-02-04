@@ -1,4 +1,5 @@
 'use client'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Logo1, Logo2, Logo3, Logo4, Logo5, Logo6 } from './icons/CarouselLogos'

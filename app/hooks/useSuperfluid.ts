@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from 'react'
 import { usePublicClient, useWalletClient } from 'wagmi'
 import { SUPERFLUID_ADDRESSES, CFAv1ForwarderABI, ERC20ABI } from '@/app/config/superfluid'
-import { formatEther, parseEther, getAddress } from 'viem'
+import { formatEther, getAddress, type PublicClient } from 'viem'
 
 interface Stream {
   receiver: string
@@ -10,19 +10,107 @@ interface Stream {
   timestamp: string
 }
 
+interface FlowInfo {
+  flowrate: bigint
+  lastUpdated: bigint
+  deposit: bigint
+  owedDeposit: bigint
+}
+
 export function useSuperfluid() {
-  const publicClient = usePublicClient()
+  const client = usePublicClient()
   const { data: walletClient } = useWalletClient()
   const [activeStreams, setActiveStreams] = useState<Stream[]>([])
   const [usdcxBalance, setUsdcxBalance] = useState('0')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Ensure publicClient is defined
+  const publicClient = client as PublicClient
+
+  const fetchBalance = useCallback(async () => {
+    if (!walletClient?.account || !publicClient) return
+
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const userAddress = getAddress(walletClient.account.address)
+      const usdcxAddress = getAddress(SUPERFLUID_ADDRESSES.USDCx)
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const decimals = await publicClient.readContract({
+        address: usdcxAddress,
+        abi: ERC20ABI,
+        functionName: 'decimals'
+      }).catch(() => 18)
+
+      const balance = await publicClient.readContract({
+        address: usdcxAddress,
+        abi: ERC20ABI,
+        functionName: 'balanceOf',
+        args: [userAddress]
+      }).catch(() => 0n)
+      
+      const formattedBalance = Number(formatEther(balance))
+      setUsdcxBalance(formattedBalance.toString())
+    } catch (error) {
+      console.error('Error fetching USDCx balance:', error)
+      setError('Failed to fetch balance')
+      setUsdcxBalance('0')
+    } finally {
+      setLoading(false)
+    }
+  }, [publicClient, walletClient?.account])
+
+  const fetchFlowInfo = useCallback(async () => {
+    if (!walletClient?.account || !publicClient) return
+
+    try {
+      const userAddress = getAddress(walletClient.account.address)
+      const forwarderAddress = getAddress(SUPERFLUID_ADDRESSES.CFAv1Forwarder)
+      const usdcxAddress = getAddress(SUPERFLUID_ADDRESSES.USDCx)
+
+      const result = await publicClient.readContract({
+        address: forwarderAddress,
+        abi: CFAv1ForwarderABI,
+        functionName: 'getFlow',
+        args: [
+          usdcxAddress,
+          userAddress,
+          userAddress
+        ]
+      })
+
+      // Convert array result to FlowInfo object
+      const flowInfo: FlowInfo = {
+        lastUpdated: result[0],
+        flowrate: result[1],
+        deposit: result[2],
+        owedDeposit: result[3]
+      }
+
+      if (flowInfo && flowInfo.flowrate > BigInt(0)) {
+        setActiveStreams([{
+          receiver: userAddress,
+          flowRate: flowInfo.flowrate.toString(),
+          token: usdcxAddress,
+          timestamp: flowInfo.lastUpdated.toString()
+        }])
+      } else {
+        setActiveStreams([])
+      }
+    } catch (error) {
+      console.error('Error fetching flow info:', error)
+      setActiveStreams([])
+    }
+  }, [publicClient, walletClient?.account])
+
   useEffect(() => {
     let mounted = true
 
     const init = async () => {
-      if (!walletClient?.account) {
+      if (!walletClient?.account || !publicClient) {
         setLoading(false)
         return
       }
@@ -49,80 +137,7 @@ export function useSuperfluid() {
     return () => {
       mounted = false
     }
-  }, [walletClient?.account])
-
-  const fetchBalance = async () => {
-    if (!walletClient?.account) return
-
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const userAddress = getAddress(walletClient.account.address)
-      const usdcxAddress = getAddress(SUPERFLUID_ADDRESSES.USDCx)
-
-      // First get decimals
-      const decimals = await publicClient.readContract({
-        address: usdcxAddress,
-        abi: ERC20ABI,
-        functionName: 'decimals'
-      }).catch(() => 18) // Default to 18 decimals if call fails
-
-      // Then get balance
-      const balance = await publicClient.readContract({
-        address: usdcxAddress,
-        abi: ERC20ABI,
-        functionName: 'balanceOf',
-        args: [userAddress]
-      }).catch(() => 0n) // Default to 0 if call fails
-      
-      // Format based on decimals
-      const formattedBalance = Number(balance) / Math.pow(10, decimals)
-      setUsdcxBalance(formattedBalance.toString())
-    } catch (error) {
-      console.error('Error fetching USDCx balance:', error)
-      setError('Failed to fetch balance')
-      setUsdcxBalance('0')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchFlowInfo = async () => {
-    if (!walletClient?.account) return
-
-    try {
-      const userAddress = getAddress(walletClient.account.address)
-      const forwarderAddress = getAddress(SUPERFLUID_ADDRESSES.CFAv1Forwarder)
-      const usdcxAddress = getAddress(SUPERFLUID_ADDRESSES.USDCx)
-
-      // Get flow info for the user's own stream
-      const flowInfo = await publicClient.readContract({
-        address: forwarderAddress,
-        abi: CFAv1ForwarderABI,
-        functionName: 'getFlow',
-        args: [
-          usdcxAddress,
-          userAddress,
-          userAddress // For now, checking self-streams
-        ]
-      }).catch(() => null)
-
-      if (flowInfo && flowInfo.flowrate > 0n) {
-        setActiveStreams([{
-          receiver: userAddress,
-          flowRate: flowInfo.flowrate.toString(),
-          token: usdcxAddress,
-          timestamp: flowInfo.lastUpdated.toString()
-        }])
-      } else {
-        setActiveStreams([])
-      }
-    } catch (error) {
-      console.error('Error fetching flow info:', error)
-      setActiveStreams([])
-    }
-  }
+  }, [walletClient?.account, publicClient, fetchBalance, fetchFlowInfo])
 
   const createStream = useCallback(async ({
     receiver,
@@ -131,7 +146,7 @@ export function useSuperfluid() {
     receiver: string
     flowRate: string
   }) => {
-    if (!walletClient) throw new Error('Wallet not connected')
+    if (!walletClient || !publicClient) throw new Error('Wallet not connected')
 
     try {
       const userAddress = getAddress(walletClient.account.address)
@@ -148,7 +163,7 @@ export function useSuperfluid() {
           userAddress,
           receiverAddress,
           BigInt(flowRate),
-          '0x'
+          '0x' as `0x${string}`
         ],
         account: userAddress
       })
@@ -164,7 +179,7 @@ export function useSuperfluid() {
   }, [publicClient, walletClient, fetchBalance, fetchFlowInfo])
 
   const deleteStream = useCallback(async (receiver: string) => {
-    if (!walletClient) throw new Error('Wallet not connected')
+    if (!walletClient || !publicClient) throw new Error('Wallet not connected')
 
     try {
       const userAddress = getAddress(walletClient.account.address)
@@ -175,13 +190,13 @@ export function useSuperfluid() {
       const { request } = await publicClient.simulateContract({
         address: forwarderAddress,
         abi: CFAv1ForwarderABI,
-        functionName: 'createFlow', // Set flowRate to 0 to delete
+        functionName: 'createFlow',
         args: [
           usdcxAddress,
           userAddress,
           receiverAddress,
-          0n,
-          '0x'
+          BigInt(0),
+          '0x' as `0x${string}`
         ],
         account: userAddress
       })

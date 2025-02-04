@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       url: `ipfs://${response.data.IpfsHash}`
     })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Error uploading to IPFS:', {
       message: error.message,
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
 }
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: Request) {
+export async function OPTIONS() {
   return NextResponse.json({}, {
     headers: {
       'Access-Control-Allow-Origin': '*',

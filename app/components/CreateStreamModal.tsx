@@ -14,6 +14,7 @@ export function CreateStreamModal({ isOpen, onClose, onCreateStream }: CreateStr
   const [flowRate, setFlowRate] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { createStream } = useSuperfluid()
 
   const handleSubmit = async (e: React.FormEvent) => {

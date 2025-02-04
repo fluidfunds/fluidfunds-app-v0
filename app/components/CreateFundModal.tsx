@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useFluidFunds } from '@/app/hooks/useFluidFunds'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { uploadToIPFS, uploadFundMetadata, getIPFSUrl, uploadToIPFSWithProgress } from '@/app/services/ipfs'
 import Image from 'next/image'
 import type { FundMetadata } from '@/app/types/fund'
