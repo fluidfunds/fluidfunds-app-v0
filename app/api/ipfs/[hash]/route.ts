@@ -1,16 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextRequest, NextResponse } from 'next/server'
-import axios from 'axios'
 
-const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
-const PINATA_JWT = process.env.PINATA_JWT
-
-interface RouteParams {
-  params: {
-    hash: string
-  }
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: { params: { hash: string } }) {
   try {
     const { hash } = params
     const ipfsGatewayUrl = `https://ipfs.io/ipfs/${hash}`
