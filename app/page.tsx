@@ -22,12 +22,12 @@ import {
 import { isValidAlchemyKey } from '@/app/utils/validation'
 
 interface FundInfo {
-  address: string
+  address: `0x${string}`
   verified: boolean
   metadataUri: string
   name: string
   description: string
-  image?: string
+  image: string
   manager: string
   strategy: string
   socialLinks: {
@@ -139,9 +139,10 @@ export default function Home() {
         const fundsData = await Promise.all(
           sortedEvents.map(async (event) => {
             try {
-              const fundAddress = event.args.fundAddress as `0x${string}`
-              const manager = event.args.manager as string
-              const name = event.args.name as string
+              const { fundAddress, manager } = {
+                fundAddress: event.args.fundAddress as `0x${string}`,
+                manager: event.args.manager as string
+              }
               
               console.log(`Processing fund: ${fundAddress}`)
 
@@ -196,7 +197,7 @@ export default function Home() {
                   }
                 }
               } catch (error) {
-                console.warn(`No metadata URI in contract for ${fundAddress}`)
+                console.warn(`No metadata URI in contract for ${fundAddress}:`, error)
               }
 
               // Skip funds without valid images
@@ -211,7 +212,9 @@ export default function Home() {
 
         // Filter out null values and update state
         const validFunds = fundsData.filter((fund): fund is FundInfo => 
-          fund !== null && isValidImageUrl(fund.image)
+          fund !== null && 
+          typeof fund.image === 'string' && 
+          isValidImageUrl(fund.image)
         )
         console.log(`Setting ${validFunds.length} valid funds with images`)
         setTrendingFunds(validFunds)
@@ -458,12 +461,12 @@ export default function Home() {
                         {/* Action Buttons */}
                         <div className="flex gap-3">
                           <Link
-                            href={`/dashboard?fund=${fund.address}`}
+                            href="/connect"
                             className="flex-1 px-4 py-2.5 rounded-xl bg-fluid-primary text-white text-center 
                                      font-medium hover:bg-fluid-primary/90 transition-all duration-300 
                                      transform hover:-translate-y-0.5"
                           >
-                            Stream Now
+                            Stream USDC
                           </Link>
                           <Link
                             href={`/fund/${fund.address}`}
@@ -479,41 +482,12 @@ export default function Home() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
-                  <div className="text-4xl mb-4">🏦</div>
-                  <h3 className="text-xl font-medium mb-2">No Funds Available Yet</h3>
-                  <p className="text-white/60">Be the first to create a fund and start your investment journey!</p>
-                </div>
+                <div className="text-center text-white/70">No funds found.</div>
               )}
             </div>
           </motion.div>
-
-          {/* Benefits Section */}
-          <div id="benefits">
-            <Benefits />
-          </div>
-
-          {/* FAQ Section */}
-          <div id="faq">
-            <FAQ />
-          </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-fluid-white-10 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <span className="text-fluid-primary font-medium">FluidFunds</span>
-          <a
-            href="https://x.com/fluidfunds"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-fluid-white-70 hover:text-fluid-white transition-colors"
-          >
-            Follow us on X
-          </a>
-        </div>
-      </footer>
     </div>
   )
 }
