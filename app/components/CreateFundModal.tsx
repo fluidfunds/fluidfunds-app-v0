@@ -7,7 +7,7 @@ import { uploadToIPFS, uploadFundMetadata, getIPFSUrl, uploadToIPFSWithProgress 
 import Image from 'next/image'
 import type { FundMetadata } from '@/app/types/fund'
 import { toast } from 'sonner'
-import { setFundMetadataUri, addExistingFundMetadata } from '@/app/utils/fundMetadataMap'
+import { setFundMetadataUri } from '@/app/utils/fundMetadataMap'
 import { useWalletClient, usePublicClient } from 'wagmi'
 import { FLUID_FUNDS_ADDRESS } from '@/app/config/contracts'
 
@@ -52,7 +52,6 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Add wallet and public client checks at the start
     if (!walletClient?.account) {
       toast.error('Please connect your wallet')
       return
@@ -66,10 +65,9 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
     setLoading(true)
 
     try {
-      // Show creating fund toast
       const creatingToast = toast.loading('Creating fund...')
 
-      // First, upload image to IPFS if exists
+      // Upload image to IPFS if exists
       let imageHash = ''
       if (fileInputRef.current?.files?.[0]) {
         toast.loading('Uploading image to IPFS...', { id: creatingToast })
@@ -80,13 +78,13 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
         imageHash = await uploadToIPFSWithProgress(file, progress)
       }
 
-      // Prepare and upload metadata - wallet is guaranteed to be defined here
+      // Prepare metadata
       toast.loading('Preparing fund metadata...', { id: creatingToast })
       const metadata: FundMetadata = {
         name,
         description,
         image: imageHash ? `ipfs://${imageHash}` : '',
-        manager: walletClient.account.address, // Safe to use after check
+        manager: walletClient.account.address,
         strategy,
         socialLinks: {
           twitter: socialLinks.twitter,
@@ -106,7 +104,7 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
       const metadataHash = await uploadFundMetadata(metadata)
       const metadataUri = `ipfs://${metadataHash}`
 
-      // Create fund with contract
+      // Create fund
       toast.loading('Creating fund on blockchain...', { id: creatingToast })
       const hash = await createFund({
         name,
@@ -115,76 +113,30 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
         minInvestmentAmount: minInvestmentAmount
       })
 
-      // Wait for transaction - publicClient is now guaranteed to be defined
-      toast.loading('Waiting for transaction confirmation...', { id: creatingToast })
+      // Wait for transaction
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
 
-      // Get fund address from FundCreated event
-      const fundCreatedEvent = receipt.logs.find(log => {
-        // Check if this log is from our contract
-        return log.address.toLowerCase() === FLUID_FUNDS_ADDRESS.toLowerCase()
-      })
+      // Get fund address from event
+      const fundAddress = receipt.logs.find(
+        log => log.address.toLowerCase() === FLUID_FUNDS_ADDRESS.toLowerCase()
+      )?.topics[1]
 
-      if (!fundCreatedEvent) {
-        console.error('Transaction logs:', receipt.logs)
-        throw new Error('Fund creation event not found in transaction logs')
-      }
-
-      // Get the fund address from the event data
-      const fundAddress = fundCreatedEvent.topics[1] // The fund address should be the first indexed parameter
-        ? `0x${fundCreatedEvent.topics[1].slice(26)}` // Convert to checksum address format
-        : fundCreatedEvent.address
-
-      console.log('Fund creation details:', {
-        transactionHash: hash,
-        fundAddress,
-        logs: receipt.logs,
-        event: fundCreatedEvent,
-        contractAddress: FLUID_FUNDS_ADDRESS
-      })
-
-      // Verify the fund address
       if (!fundAddress) {
-        throw new Error('Could not extract fund address from event')
+        throw new Error('Fund address not found in transaction receipt')
       }
 
-      // Store metadata
-      toast.loading('Storing fund metadata...', { id: creatingToast })
+      // Store metadata mapping
       setFundMetadataUri(
-        fundAddress,
+        fundAddress as `0x${string}`,
         metadataUri,
         walletClient.account.address
       )
-      
-      addExistingFundMetadata(fundAddress, {
-        uri: metadataUri,
-        manager: walletClient.account.address
-      })
 
-      // Success!
       toast.success('Fund created successfully!', { id: creatingToast })
       onClose()
-      
-      // Force a page refresh after a short delay to ensure metadata is loaded
-      setTimeout(() => {
-        window.location.reload()
-      }, 2000) // Increased delay to 2 seconds
 
-      // Reset form
-      setName('')
-      setDescription('')
-      setProfitSharingPercentage('')
-      setSubscriptionEndDate('')
-      setMinInvestmentAmount('')
-      setPreviewImage(null)
-      setStrategy('')
-      setSocialLinks({
-        twitter: '',
-        discord: '',
-        telegram: ''
-      })
-      setUploadProgress(0)
-
+      // Force refresh after short delay
+      setTimeout(() => window.location.reload(), 2000)
     } catch (error) {
       console.error('Error creating fund:', error)
       toast.error('Failed to create fund')

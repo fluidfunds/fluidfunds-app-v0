@@ -1,5 +1,4 @@
 'use client'
-import Image from "next/image";
 import { motion } from 'framer-motion'
 import Header from './components/Header'
 import FAQ from './components/FAQ'
@@ -9,48 +8,55 @@ import ParticleBackground from '@/app/components/ParticleBackground'
 import HeroCarousel from './components/HeroCarousel'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { createPublicClient, http, parseAbiItem } from 'viem'
-import { baseSepolia } from 'viem/chains'
-import { FLUID_FUNDS_ADDRESS, FLUID_FUNDS_ABI } from '@/app/config/contracts'
-import { getFundMetadata, getIPFSUrl } from '@/app/services/ipfs'
 import { 
-  getFundMetadataFromStorage, 
+  createPublicClient, 
+  http, 
+  parseAbiItem, 
+  decodeFunctionData,
+  formatEther 
+} from 'viem'
+import { baseSepolia } from 'viem/chains'
+import { FLUID_FUNDS_ADDRESS } from '@/app/config/contracts'
+import { 
   fundMetadataMap,
   initializeMetadataMap,
-  StoredMetadata
+  type StoredMetadata
 } from '@/app/utils/fundMetadataMap'
 import { isValidAlchemyKey } from '@/app/utils/validation'
+import FundCard from '@/app/components/FundCard'
 
+// Update FundInfo interface to include all required properties
 interface FundInfo {
   address: `0x${string}`
-  verified: boolean
-  metadataUri: string
+  verified?: boolean
+  metadataUri?: string
   name: string
-  description: string
-  image: string
-  manager: string
-  strategy: string
-  socialLinks: {
+  description?: string
+  image?: string
+  manager: `0x${string}`
+  strategy?: string
+  socialLinks?: {
     twitter?: string
     discord?: string
     telegram?: string
   }
-  performanceMetrics: {
+  performanceMetrics?: {
     tvl: string
     returns: string
     investors: number
   }
-  updatedAt: number
+  updatedAt?: number
   blockNumber: number
+  createdAt: number // Add this required field
+  profitSharingPercentage: number
+  subscriptionEndTime: number
+  minInvestmentAmount: bigint
+  formattedDate: string
+  profitSharingFormatted: string
+  minInvestmentFormatted: string // Add this required field
 }
 
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
-
-// First, add a helper function to validate image URLs
-const isValidImageUrl = (url?: string): boolean => {
-  if (!url) return false
-  return url.startsWith('http') || url.startsWith('ipfs://')
-}
 
 export default function Home() {
   const [trendingFunds, setTrendingFunds] = useState<FundInfo[]>([])
@@ -79,14 +85,23 @@ export default function Home() {
 
   useEffect(() => {
     const fetchFunds = async () => {
+      console.log('Environment check:', {
+        isDevelopment: process.env.NODE_ENV === 'development',
+        hasAlchemyKey: !!ALCHEMY_API_KEY,
+        keyPrefix: ALCHEMY_API_KEY?.substring(0, 6),
+        contractAddress: FLUID_FUNDS_ADDRESS
+      })
+
       if (!ALCHEMY_API_KEY) {
-        console.error('Alchemy API key not found or invalid:', ALCHEMY_API_KEY)
+        console.error('Alchemy API key not found. Please check your .env.local file')
         setLoading(false)
         return
       }
 
       if (!isValidAlchemyKey(ALCHEMY_API_KEY)) {
-        console.error('Invalid Alchemy API key configuration')
+        console.error('Invalid Alchemy API key format:', 
+          ALCHEMY_API_KEY.substring(0, 6) + '...'
+        )
         setLoading(false)
         return
       }
@@ -120,6 +135,23 @@ export default function Home() {
           throw new Error('RPC connection failed')
         }
 
+        // Add this check before processing funds
+        try {
+          const code = await publicClient.getBytecode({
+            address: FLUID_FUNDS_ADDRESS
+          })
+          
+          if (!code || code === '0x') {
+            console.error('No contract deployed at address:', FLUID_FUNDS_ADDRESS)
+            return
+          }
+          
+          console.log('Contract verified at address:', FLUID_FUNDS_ADDRESS)
+        } catch (error) {
+          console.error('Error verifying contract:', error)
+          return
+        }
+
         console.log('Fetching fund creation events...')
         
         const fundCreationEvents = await publicClient.getLogs({
@@ -135,93 +167,149 @@ export default function Home() {
           Number(b.blockNumber) - Number(a.blockNumber)
         )
 
-        // Process all funds
-        const fundsData = await Promise.all(
+        // Inside the fetchFunds function
+        const getFundDetailsFromEvent = async (event: typeof fundCreationEvents[0]) => {
+          try {
+            // Ensure the args exist and are properly typed
+            if (!event.args?.fundAddress || !event.args?.manager) {
+              throw new Error('Missing event arguments')
+            }
+
+            const fundAddress = event.args.fundAddress
+            const manager = event.args.manager
+            const name = event.args.name || ''
+
+            // Get the block to find creation time
+            const block = await publicClient.getBlock({
+              blockNumber: event.blockNumber
+            })
+
+            return {
+              address: fundAddress,
+              manager: manager,
+              name: name,
+              createdAt: Number(block.timestamp),
+              blockNumber: Number(event.blockNumber)
+            }
+          } catch (error) {
+            console.error('Error getting event details:', error)
+            return null
+          }
+        }
+
+        const getFundCreationParams = async (event: typeof fundCreationEvents[0]) => {
+          try {
+            // Add type check at the start
+            if (!event.args?.fundAddress || !event.args?.manager) {
+              throw new Error('Missing event arguments')
+            }
+
+            // Get the transaction that created the fund
+            const tx = await publicClient.getTransaction({
+              hash: event.transactionHash
+            })
+
+            // Decode using the full function definition
+            const createFundAbi = {
+              name: 'createFund',
+              inputs: [
+                { name: 'name', type: 'string' },
+                { name: 'profitSharingPercentage', type: 'uint256' },
+                { name: 'subscriptionEndTime', type: 'uint256' },
+                { name: 'minInvestmentAmount', type: 'uint256' }
+              ],
+              outputs: [{ type: 'address' }],
+              stateMutability: 'nonpayable',
+              type: 'function'
+            } as const // Add const assertion
+
+            // Decode the full function call with proper typing
+            const decoded = decodeFunctionData({
+              abi: [createFundAbi],
+              data: tx.input
+            })
+
+            // Add type checking and assertions
+            if (!decoded.args || decoded.args.length < 4) {
+              throw new Error('Failed to decode function arguments')
+            }
+
+            // Type assertions for the decoded arguments
+            const [name, profitShare, endTime, minAmount] = decoded.args as [string, bigint, bigint, bigint]
+
+            const params = {
+              name,
+              profitSharingPercentage: Number(profitShare),
+              subscriptionEndTime: Number(endTime),
+              minInvestmentAmount: Number(minAmount),
+              minInvestmentFormatted: `${new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+              }).format(Number(formatEther(BigInt(minAmount))))} USDC`
+            }
+
+            console.log('Parsed parameters:', params)
+            return params
+
+          } catch (error) {
+            console.error('Error decoding fund creation params:', {
+              error,
+              transactionHash: event.transactionHash
+            })
+            return null
+          }
+        }
+
+        // Combine both approaches
+        const fundsWithDetails = await Promise.all(
           sortedEvents.map(async (event) => {
-            try {
-              const { fundAddress, manager } = {
-                fundAddress: event.args.fundAddress as `0x${string}`,
-                manager: event.args.manager as string
-              }
-              
-              console.log(`Processing fund: ${fundAddress}`)
-
-              // First try to get stored metadata
-              const storedMetadata = getFundMetadataFromStorage(fundAddress)
-              if (storedMetadata) {
-                console.log(`Found stored metadata for ${fundAddress}`)
-                try {
-                  const metadata = await getFundMetadata(storedMetadata.uri)
-                  // Only return if there's a valid image
-                  if (isValidImageUrl(metadata.image)) {
-                    return {
-                      address: fundAddress,
-                      verified: true,
-                      metadataUri: storedMetadata.uri,
-                      ...metadata,
-                      manager,
-                      blockNumber: Number(event.blockNumber)
-                    }
-                  }
-                } catch (error) {
-                  console.warn(`Failed to fetch stored metadata for ${fundAddress}:`, error)
-                }
-              }
-
-              // If no stored metadata, try contract metadata
-              try {
-                const metadataUri = await publicClient.readContract({
-                  address: FLUID_FUNDS_ADDRESS,
-                  abi: FLUID_FUNDS_ABI,
-                  functionName: 'getFundMetadataUri',
-                  args: [fundAddress]
-                })
-
-                if (metadataUri) {
-                  console.log(`Got contract metadata URI for ${fundAddress}: ${metadataUri}`)
-                  try {
-                    const metadata = await getFundMetadata(metadataUri)
-                    // Only return if there's a valid image
-                    if (isValidImageUrl(metadata.image)) {
-                      return {
-                        address: fundAddress,
-                        verified: true,
-                        metadataUri,
-                        ...metadata,
-                        manager,
-                        blockNumber: Number(event.blockNumber)
-                      }
-                    }
-                  } catch (error) {
-                    console.warn(`Failed to fetch contract metadata for ${fundAddress}:`, error)
-                  }
-                }
-              } catch (error) {
-                console.warn(`No metadata URI in contract for ${fundAddress}:`, error)
-              }
-
-              // Skip funds without valid images
-              return null
-
-            } catch (error) {
-              console.error('Error processing fund:', error)
+            const fundAddress = event.args?.fundAddress
+            if (!fundAddress) return null
+            
+            console.log(`\nProcessing fund: ${fundAddress}`)
+            
+            // Get basic details from event
+            const eventDetails = await getFundDetailsFromEvent(event)
+            if (!eventDetails) {
+              console.log(`Could not get event details for fund ${fundAddress}`)
               return null
             }
+            
+            // Get creation parameters from transaction
+            const creationParams = await getFundCreationParams(event)
+            if (!creationParams) {
+              console.log(`Could not get creation params for fund ${fundAddress}`)
+              return null // Change to return null instead of eventDetails
+            }
+            
+            const fundDetails = {
+              ...eventDetails,
+              ...creationParams,
+              minInvestmentAmount: BigInt(creationParams.minInvestmentAmount),
+              formattedDate: new Date(eventDetails.createdAt * 1000).toLocaleDateString(),
+              profitSharingFormatted: `${(creationParams.profitSharingPercentage / 100).toFixed(2)}%`,
+              // Add required fields
+              createdAt: eventDetails.createdAt,
+              minInvestmentFormatted: `${new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+              }).format(Number(formatEther(BigInt(creationParams.minInvestmentAmount))))} USDC`,
+              profitSharingPercentage: creationParams.profitSharingPercentage,
+              subscriptionEndTime: creationParams.subscriptionEndTime
+            } as FundInfo
+
+            return fundDetails
           })
         )
 
         // Filter out null values and update state
-        const validFunds = fundsData.filter((fund): fund is FundInfo => 
-          fund !== null && 
-          typeof fund.image === 'string' && 
-          isValidImageUrl(fund.image)
-        )
-        console.log(`Setting ${validFunds.length} valid funds with images`)
+        const validFunds = fundsWithDetails.filter((fund): fund is FundInfo => fund !== null)
+        console.log(`Found ${validFunds.length} valid funds`)
+
         setTrendingFunds(validFunds)
         setLoading(false)
-
       } catch (error) {
-        console.error('Error in fetchFunds:', error)
+        console.error('Error fetching funds:', error)
         setLoading(false)
       }
     }
@@ -379,106 +467,8 @@ export default function Home() {
                 </div>
               ) : trendingFunds.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {trendingFunds.map((fund, index) => (
-                    <motion.div
-                      key={fund.address}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="group relative overflow-hidden rounded-2xl bg-gradient-to-b from-white/[0.03] to-white/[0.05] 
-                               backdrop-blur-sm border border-white/[0.05] hover:border-fluid-primary/30 
-                               transition-all duration-300 shadow-lg hover:shadow-fluid-primary/5"
-                    >
-                      {/* Fund Image with Overlay */}
-                      {fund.image && (
-                        <div className="relative aspect-[16/9] overflow-hidden rounded-t-xl">
-                          <Image
-                            src={getIPFSUrl(fund.image)}
-                            alt={fund.name || 'Fund image'}
-                            width={400}
-                            height={225}
-                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                        </div>
-                      )}
-
-                      {/* Content Container */}
-                      <div className="p-6">
-                        {/* Header with Verification Badge */}
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="text-xl font-semibold mb-1 text-white group-hover:text-fluid-primary transition-colors">
-                              {fund.name}
-                            </h3>
-                            <p className="text-sm text-white/60 font-mono">
-                              {fund.address.slice(0, 6)}...{fund.address.slice(-4)}
-                            </p>
-                          </div>
-                          {fund.verified && (
-                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-fluid-primary/10 text-fluid-primary text-xs">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 6L9 17l-5-5" />
-                              </svg>
-                              Verified
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Description */}
-                        {fund.description && (
-                          <p className="text-sm text-white/70 mb-6 line-clamp-2 min-h-[40px]">
-                            {fund.description}
-                          </p>
-                        )}
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-2 gap-4 mb-6 p-4 rounded-xl bg-black/20">
-                          <div>
-                            <p className="text-xs text-white/50 mb-1">TVL</p>
-                            <p className="text-sm font-medium">${fund.performanceMetrics?.tvl || '0'}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-white/50 mb-1">Returns</p>
-                            <p className="text-sm font-medium">{fund.performanceMetrics?.returns || '0'}%</p>
-                          </div>
-                        </div>
-
-                        {/* Manager Info */}
-                        <div className="flex items-center gap-3 mb-6">
-                          <div className="w-8 h-8 rounded-full bg-fluid-primary/10 flex items-center justify-center">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-xs text-white/50">Manager</p>
-                            <p className="text-sm font-mono">{fund.manager?.slice(0, 6)}...{fund.manager?.slice(-4)}</p>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-3">
-                          <Link
-                            href="/connect"
-                            className="flex-1 px-4 py-2.5 rounded-xl bg-fluid-primary text-white text-center 
-                                     font-medium hover:bg-fluid-primary/90 transition-all duration-300 
-                                     transform hover:-translate-y-0.5"
-                          >
-                            Stream USDC
-                          </Link>
-                          <Link
-                            href={`/fund/${fund.address}`}
-                            className="px-4 py-2.5 rounded-xl bg-white/[0.05] text-white font-medium 
-                                     hover:bg-white/[0.08] transition-all duration-300 
-                                     transform hover:-translate-y-0.5"
-                          >
-                            Details
-                          </Link>
-                        </div>
-                      </div>
-                    </motion.div>
+                  {trendingFunds.map((fund) => (
+                    <FundCard key={fund.address} fund={fund} />
                   ))}
                 </div>
               ) : (

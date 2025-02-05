@@ -120,6 +120,25 @@ export function useFluidFunds() {
     }
   }, [publicClient])
 
+  const getFundMetadataUri = useCallback(async (fundAddress: string): Promise<string> => {
+    if (!publicClient) return ''
+
+    try {
+      const formattedAddress = getAddress(fundAddress) as `0x${string}`
+      
+      const metadataUri = await publicClient.readContract({
+        address: FLUID_FUNDS_ADDRESS,
+        abi: FLUID_FUNDS_ABI,
+        functionName: 'getFundMetadataUri',
+        args: [formattedAddress]
+      })
+      return metadataUri as string
+    } catch (error) {
+      console.error('Error getting fund metadata URI:', error)
+      return ''
+    }
+  }, [publicClient])
+
   const getAllFundsWithMetadata = useCallback(async (): Promise<FundWithMetadata[]> => {
     if (!publicClient) return []
 
@@ -135,7 +154,7 @@ export function useFluidFunds() {
           publicClient.readContract({
             address: FLUID_FUNDS_ADDRESS,
             abi: FLUID_FUNDS_ABI,
-            functionName: 'funds',
+            functionName: 'allFunds',
             args: [BigInt(i)]
           })
         )
@@ -143,13 +162,9 @@ export function useFluidFunds() {
 
       const fundsWithMetadata = await Promise.all(
         fundAddresses.map(async (address) => {
-          const verified = await checkIsFund(address)
-          const metadataUri = await publicClient.readContract({
-            address: FLUID_FUNDS_ADDRESS,
-            abi: FLUID_FUNDS_ABI,
-            functionName: 'getFundMetadataUri',
-            args: [address]
-          }) as string
+          const formattedAddress = getAddress(address) as `0x${string}`
+          const verified = await checkIsFund(formattedAddress)
+          const metadataUri = await getFundMetadataUri(formattedAddress)
 
           let metadata: FundMetadata
           try {
@@ -157,10 +172,10 @@ export function useFluidFunds() {
           } catch (error) {
             console.error('Error fetching metadata:', error)
             metadata = {
-              name: `Fund ${address.slice(0, 6)}...${address.slice(-4)}`,
+              name: `Fund ${formattedAddress.slice(0, 6)}...${formattedAddress.slice(-4)}`,
               description: 'Fund details temporarily unavailable',
               image: '',
-              manager: address,
+              manager: formattedAddress,
               strategy: '',
               socialLinks: {},
               performanceMetrics: {
@@ -186,7 +201,7 @@ export function useFluidFunds() {
       console.error('Error getting all funds with metadata:', error)
       return []
     }
-  }, [publicClient, checkIsFund])
+  }, [publicClient, checkIsFund, getFundMetadataUri])
 
   return {
     createFund,
