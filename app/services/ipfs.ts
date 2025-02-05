@@ -36,53 +36,45 @@ const DEFAULT_METADATA: FundMetadata = {
 // Get fund metadata
 export const getFundMetadata = async (metadataUri: string): Promise<FundMetadata> => {
   try {
+    if (!metadataUri) {
+      throw new Error('No metadata URI provided')
+    }
+
     // Clean the hash
     const hash = metadataUri.replace(/^ipfs:\/\//, '').trim()
     if (!hash) {
-      console.warn('Invalid metadata URI')
-      return DEFAULT_METADATA
+      throw new Error('Invalid IPFS hash')
     }
 
-    // Log the hash and URL for debugging
-    console.log('Clean hash:', hash)
     const url = `${PINATA_GATEWAY}/${hash}`
-    console.log('Fetching from URL:', url)
+    console.log('Fetching metadata from:', url)
 
-    try {
-      const response = await axios({
-        method: 'get',
-        url: url,
-        headers: {
-          'Accept': '*/*'
-        },
-        maxRedirects: 5,
-        validateStatus: (status) => status < 500
-      })
+    const response = await axios({
+      method: 'get',
+      url: url,
+      headers: {
+        'Accept': 'application/json',
+      },
+      timeout: 10000 // 10 second timeout
+    })
 
-      if (response.status === 200 && response.data) {
-        // Transform image URLs to use Pinata gateway
-        const transformedData = {
-          ...response.data,
-          image: response.data.image ? getIPFSUrl(response.data.image) : '',
-          name: response.data.name || DEFAULT_METADATA.name,
-          description: response.data.description || DEFAULT_METADATA.description,
-          strategy: response.data.strategy || DEFAULT_METADATA.strategy,
-          socialLinks: response.data.socialLinks || DEFAULT_METADATA.socialLinks,
-          performanceMetrics: response.data.performanceMetrics || DEFAULT_METADATA.performanceMetrics,
-          updatedAt: response.data.updatedAt || Date.now()
-        }
+    if (!response.data) {
+      throw new Error('No data received')
+    }
 
-        return transformedData
-      } else {
-        console.warn(`Failed to fetch metadata: ${response.status}`)
-        return DEFAULT_METADATA
-      }
-    } catch (fetchError) {
-      console.error('Error fetching from Pinata:', fetchError)
-      return DEFAULT_METADATA
+    // Validate and transform the data
+    return {
+      ...DEFAULT_METADATA,
+      ...response.data,
+      // Transform image URL if needed
+      image: response.data.image ? getIPFSUrl(response.data.image) : '',
+      // Ensure required fields
+      name: response.data.name || DEFAULT_METADATA.name,
+      description: response.data.description || DEFAULT_METADATA.description,
+      updatedAt: response.data.updatedAt || Date.now()
     }
   } catch (error) {
-    console.error('Error in getFundMetadata:', error)
+    console.warn('Failed to fetch metadata:', error)
     return DEFAULT_METADATA
   }
 }

@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { createPublicClient, http, parseAbiItem } from 'viem'
 import { baseSepolia } from 'viem/chains'
-import { FLUID_FUNDS_ADDRESS } from '@/app/config/contracts'
+import { FLUID_FUNDS_ADDRESS, FLUID_FUNDS_ABI } from '@/app/config/contracts'
 import { getFundMetadata, getIPFSUrl } from '@/app/services/ipfs'
 import { 
   getFundMetadataFromStorage, 
@@ -19,6 +19,7 @@ import {
   initializeMetadataMap,
   StoredMetadata
 } from '@/app/utils/fundMetadataMap'
+import { isValidAlchemyKey } from '@/app/utils/validation'
 
 interface FundInfo {
   address: string
@@ -44,6 +45,12 @@ interface FundInfo {
 }
 
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+
+// First, add a helper function to validate image URLs
+const isValidImageUrl = (url?: string): boolean => {
+  if (!url) return false
+  return url.startsWith('http') || url.startsWith('ipfs://')
+}
 
 export default function Home() {
   const [trendingFunds, setTrendingFunds] = useState<FundInfo[]>([])
@@ -73,7 +80,13 @@ export default function Home() {
   useEffect(() => {
     const fetchFunds = async () => {
       if (!ALCHEMY_API_KEY) {
-        console.error('Alchemy API key not found')
+        console.error('Alchemy API key not found or invalid:', ALCHEMY_API_KEY)
+        setLoading(false)
+        return
+      }
+
+      if (!isValidAlchemyKey(ALCHEMY_API_KEY)) {
+        console.error('Invalid Alchemy API key configuration')
         setLoading(false)
         return
       }
@@ -86,99 +99,133 @@ export default function Home() {
       try {
         setLoading(true)
         
-        console.log('Initializing public client with API key:', 
-          ALCHEMY_API_KEY.slice(0, 4) + '...' // Log only first 4 chars for security
+        console.log('Starting funds fetch with API key:', 
+          ALCHEMY_API_KEY.substring(0, 6) + '...'
         )
+
+        const rpcUrl = `https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`
+        console.log('Using RPC URL:', rpcUrl.replace(ALCHEMY_API_KEY, '[HIDDEN]'))
 
         const publicClient = createPublicClient({
           chain: baseSepolia,
-          transport: http(`https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`)
+          transport: http(rpcUrl)
         })
 
-        // Get all fund creation events
+        // Test the connection first
+        try {
+          await publicClient.getBlockNumber()
+          console.log('Successfully connected to Base Sepolia')
+        } catch (error) {
+          console.error('Failed to connect to Base Sepolia:', error)
+          throw new Error('RPC connection failed')
+        }
+
+        console.log('Fetching fund creation events...')
+        
         const fundCreationEvents = await publicClient.getLogs({
           address: FLUID_FUNDS_ADDRESS,
           event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
           fromBlock: BigInt(0)
         })
 
+        console.log(`Found ${fundCreationEvents.length} fund creation events`)
+
         // Sort by block number (most recent first)
         const sortedEvents = [...fundCreationEvents].sort((a, b) => 
           Number(b.blockNumber) - Number(a.blockNumber)
         )
 
-        // Process all funds instead of just the latest one
+        // Process all funds
         const fundsData = await Promise.all(
           sortedEvents.map(async (event) => {
-            if (!event?.args) return null
-
-            const fundAddress = event.args.fundAddress as string
-            const managerAddress = event.args.manager as string
-            const fundName = event.args.name as string
-            const blockNumber = Number(event.blockNumber)
-
-            // Get metadata from storage
-            const storedMetadata = getFundMetadataFromStorage(fundAddress)
-            if (!storedMetadata?.uri) return null
-
             try {
-              const ipfsMetadata = await getFundMetadata(storedMetadata.uri)
+              const fundAddress = event.args.fundAddress as `0x${string}`
+              const manager = event.args.manager as string
+              const name = event.args.name as string
               
-              if (ipfsMetadata) {
-                const fundInfo: FundInfo = {
-                  address: fundAddress,
-                  verified: true,
-                  name: fundName,
-                  manager: managerAddress,
-                  description: ipfsMetadata.description || 'Fund details coming soon...',
-                  image: ipfsMetadata.image || undefined,
-                  strategy: ipfsMetadata.strategy || '',
-                  socialLinks: ipfsMetadata.socialLinks || {},
-                  performanceMetrics: {
-                    tvl: ipfsMetadata.performanceMetrics?.tvl || '0',
-                    returns: ipfsMetadata.performanceMetrics?.returns || '0',
-                    investors: ipfsMetadata.performanceMetrics?.investors || 0
-                  },
-                  updatedAt: ipfsMetadata.updatedAt || Date.now(),
-                  metadataUri: storedMetadata.uri,
-                  blockNumber
+              console.log(`Processing fund: ${fundAddress}`)
+
+              // First try to get stored metadata
+              const storedMetadata = getFundMetadataFromStorage(fundAddress)
+              if (storedMetadata) {
+                console.log(`Found stored metadata for ${fundAddress}`)
+                try {
+                  const metadata = await getFundMetadata(storedMetadata.uri)
+                  // Only return if there's a valid image
+                  if (isValidImageUrl(metadata.image)) {
+                    return {
+                      address: fundAddress,
+                      verified: true,
+                      metadataUri: storedMetadata.uri,
+                      ...metadata,
+                      manager,
+                      blockNumber: Number(event.blockNumber)
+                    }
+                  }
+                } catch (error) {
+                  console.warn(`Failed to fetch stored metadata for ${fundAddress}:`, error)
                 }
-                return fundInfo
               }
+
+              // If no stored metadata, try contract metadata
+              try {
+                const metadataUri = await publicClient.readContract({
+                  address: FLUID_FUNDS_ADDRESS,
+                  abi: FLUID_FUNDS_ABI,
+                  functionName: 'getFundMetadataUri',
+                  args: [fundAddress]
+                })
+
+                if (metadataUri) {
+                  console.log(`Got contract metadata URI for ${fundAddress}: ${metadataUri}`)
+                  try {
+                    const metadata = await getFundMetadata(metadataUri)
+                    // Only return if there's a valid image
+                    if (isValidImageUrl(metadata.image)) {
+                      return {
+                        address: fundAddress,
+                        verified: true,
+                        metadataUri,
+                        ...metadata,
+                        manager,
+                        blockNumber: Number(event.blockNumber)
+                      }
+                    }
+                  } catch (error) {
+                    console.warn(`Failed to fetch contract metadata for ${fundAddress}:`, error)
+                  }
+                }
+              } catch (error) {
+                console.warn(`No metadata URI in contract for ${fundAddress}`)
+              }
+
+              // Skip funds without valid images
+              return null
+
             } catch (error) {
-              console.error(`Failed to fetch metadata for fund ${fundAddress}:`, error)
+              console.error('Error processing fund:', error)
+              return null
             }
-            return null
           })
         )
 
-        // Filter out null values and sort by updatedAt
-        const validFunds = fundsData
-          .filter((fund): fund is NonNullable<typeof fund> => 
-            fund !== null && 
-            typeof fund.name === 'string' &&
-            typeof fund.description === 'string'
-          )
-          .sort((a, b) => {
-            // Sort by block number first (most recent first)
-            if (a.blockNumber !== b.blockNumber) {
-              return b.blockNumber - a.blockNumber
-            }
-            // If block numbers are equal, sort by updatedAt
-            return b.updatedAt - a.updatedAt
-          })
-
-        console.log('Valid funds for display:', validFunds)
+        // Filter out null values and update state
+        const validFunds = fundsData.filter((fund): fund is FundInfo => 
+          fund !== null && isValidImageUrl(fund.image)
+        )
+        console.log(`Setting ${validFunds.length} valid funds with images`)
         setTrendingFunds(validFunds)
+        setLoading(false)
+
       } catch (error) {
         console.error('Error in fetchFunds:', error)
-        setTrendingFunds([])
-      } finally {
         setLoading(false)
       }
     }
 
-    fetchFunds()
+    if (metadataInitialized) {
+      fetchFunds()
+    }
   }, [metadataInitialized])
 
   return (
