@@ -487,7 +487,32 @@ export default function Home() {
             </div>
           </motion.div>
         </div>
+
+        {/* Benefits Section */}
+        <div id="benefits" className="mt-32">
+          <Benefits />
+        </div>
+
+        {/* FAQ Section */}
+        <div id="faq" className="mt-32">
+          <FAQ />
+        </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-fluid-white-10 py-8">
+        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+          <span className="text-fluid-primary font-medium">FluidFunds</span>
+          <a
+            href="https://x.com/fluidfunds"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-fluid-white-70 hover:text-fluid-white transition-colors"
+          >
+            Follow us on X
+          </a>
+        </div>
+      </footer>
     </div>
   )
 }
