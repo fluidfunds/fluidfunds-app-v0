@@ -43,6 +43,8 @@ interface FundInfo {
   blockNumber: number
 }
 
+const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+
 export default function Home() {
   const [trendingFunds, setTrendingFunds] = useState<FundInfo[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,14 +72,27 @@ export default function Home() {
 
   useEffect(() => {
     const fetchFunds = async () => {
-      if (!metadataInitialized) return
+      if (!ALCHEMY_API_KEY) {
+        console.error('Alchemy API key not found')
+        setLoading(false)
+        return
+      }
+
+      if (!metadataInitialized) {
+        console.log('Metadata not initialized yet')
+        return
+      }
 
       try {
         setLoading(true)
         
+        console.log('Initializing public client with API key:', 
+          ALCHEMY_API_KEY.slice(0, 4) + '...' // Log only first 4 chars for security
+        )
+
         const publicClient = createPublicClient({
           chain: baseSepolia,
-          transport: http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+          transport: http(`https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`)
         })
 
         // Get all fund creation events
