@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { formatEther } from 'viem'
 
 interface Fund {
-  address: `0x${string}`
+  address: `0xEfcac0050446Ce88798f3C1d32873047104F66aD`
   name: string
   manager: `0x${string}`
   minInvestmentAmount: bigint
