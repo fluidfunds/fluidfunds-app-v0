@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { formatEther } from 'viem'
+import { useState } from 'react'
+import { useSuperfluid } from '@/app/hooks/useSuperfluid'
+import { toast } from 'sonner'
 
 // Update FundInfo interface with proper types
 interface FundInfo {
@@ -22,6 +25,10 @@ interface FundCardProps {
 }
 
 const FundCard = ({ fund }: FundCardProps) => {
+  const [streamAmount, setStreamAmount] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const { createStream } = useSuperfluid()
+
   // Format the subscription end time
   const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString()
   const isSubscriptionOpen = fund.subscriptionEndTime > Date.now() / 1000
@@ -42,6 +49,26 @@ const FundCard = ({ fund }: FundCardProps) => {
     } catch (error) {
       console.error('Error formatting investment amount:', error)
       return `${amount.toString()} wei`
+    }
+  }
+
+  const handleCreateStream = async () => {
+    if (!streamAmount) {
+      toast.error('Please enter a stream amount')
+      return
+    }
+
+    setIsStreaming(true)
+    try {
+      const hash = await createStream(fund.address, streamAmount)
+      console.log('Stream created with hash:', hash)
+      toast.success('Stream created successfully!')
+      setStreamAmount('') // Clear input after success
+    } catch (error) {
+      console.error('Error creating stream:', error)
+      toast.error('Failed to create stream. Please ensure you have enough USDCx balance.')
+    } finally {
+      setIsStreaming(false)
     }
   }
 
@@ -113,19 +140,27 @@ const FundCard = ({ fund }: FundCardProps) => {
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Link
-            href="/connect"
-            className="flex-1 px-4 py-2.5 rounded-xl bg-fluid-primary text-white text-center 
-                     font-medium hover:bg-fluid-primary/90 transition-all duration-300 
-                     transform hover:-translate-y-0.5"
-          >
-            Stream USDC
-          </Link>
+          <div className="flex-1 flex gap-2">
+            <input
+              type="number"
+              placeholder="Monthly USDC"
+              value={streamAmount}
+              onChange={(e) => setStreamAmount(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-white/[0.05] border border-white/[0.08]"
+            />
+            <button
+              onClick={handleCreateStream}
+              disabled={isStreaming}
+              className="px-4 py-2 rounded-lg bg-fluid-primary text-white font-medium
+                       hover:bg-fluid-primary/90 transition-colors disabled:opacity-50"
+            >
+              {isStreaming ? 'Creating...' : 'Stream'}
+            </button>
+          </div>
           <Link
             href={`/fund/${fund.address}`}
-            className="px-4 py-2.5 rounded-xl bg-white/[0.05] text-white font-medium 
-                     hover:bg-white/[0.08] transition-all duration-300 
-                     transform hover:-translate-y-0.5"
+            className="px-4 py-2 rounded-lg bg-white/[0.05] text-white font-medium
+                     hover:bg-white/[0.08] transition-colors"
           >
             Details
           </Link>

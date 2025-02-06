@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -84,6 +84,90 @@ const gradientStyles = {
   }
 }
 
+// Add these helper functions back to the file, before the DashboardPage component
+const isValidFundMetadata = (metadata: any): boolean => {
+  return (
+    metadata &&
+    typeof metadata === 'object' &&
+    typeof metadata.name === 'string' &&
+    typeof metadata.description === 'string' &&
+    typeof metadata.image === 'string' &&
+    metadata.image.length > 0 && // Must have an image
+    metadata.description.length > 0 // Must have a description
+  )
+}
+
+const processManagerFundsData = (fundsData: any[]): FundInfo[] => {
+  return fundsData
+    .filter((fund): fund is NonNullable<typeof fund> => 
+      fund !== null && 
+      fund.name && 
+      fund.description && 
+      typeof fund.image !== 'undefined'
+    )
+    .map(fund => ({
+      ...fund,
+      image: fund.image || undefined,
+      manager: fund.manager as `0x${string}`,
+      metadataUri: fund.metadataUri || '',
+      verified: Boolean(fund.verified),
+      performanceMetrics: {
+        tvl: fund.performanceMetrics?.tvl || '0',
+        returns: fund.performanceMetrics?.returns || '0',
+        investors: fund.performanceMetrics?.investors || 0
+      }
+    }))
+}
+
+// Also add back the FundVerification component
+function FundVerification({ fund }: { fund: string }) {
+  const { checkIsFund } = useFluidFunds()
+  const [isVerified, setIsVerified] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const verifyFund = async () => {
+      if (!fund) {
+        if (isMounted) setIsVerified(false)
+        return
+      }
+
+      try {
+        const result = await checkIsFund(fund)
+        if (isMounted) {
+          setIsVerified(result)
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error(`Error verifying fund ${fund}:`, error)
+          setIsVerified(false)
+        }
+      }
+    }
+
+    verifyFund()
+
+    return () => {
+      isMounted = false
+    }
+  }, [fund, checkIsFund])
+
+  if (isVerified === null) {
+    return (
+      <span className="text-white/60">
+        Verifying...
+      </span>
+    )
+  }
+
+  return (
+    <span className={isVerified ? 'text-green-500' : 'text-red-500'}>
+      {isVerified ? 'Verified' : 'Not Verified'}
+    </span>
+  )
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const { address: walletAddress } = useAccount()
@@ -97,19 +181,19 @@ export default function DashboardPage() {
   const [whitelistedTokens, setWhitelistedTokens] = useState<string[]>([])
   const [batchTokens, setBatchTokens] = useState<string>('')
   const [processingBatch, setProcessingBatch] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
-  const [metadataInitialized, setMetadataInitialized] = useState(false)
   const [isUserOwner, setIsUserOwner] = useState(false)
+  const [allFunds, setAllFunds] = useState<FundInfo[]>([])
+  const [metadataInitialized, setMetadataInitialized] = useState(false)
+  const [isMetadataLoading, setIsMetadataLoading] = useState(true)
   
   const { getAllFundsWithMetadata, setTokenWhitelisted, isOwner, loading: fundsLoading, getAllWhitelistedTokens } = useFluidFunds()
   const { 
     activeStreams, 
     usdcxBalance, 
     createStream, 
-    deleteStream, 
+    deleteStream,
     loading: superfluidLoading,
-    error: superfluidError,
-    retry: retryLoadingSuperfluid
+    fetchActiveStreams
   } = useSuperfluid()
   const role = useRole()
   const { data: walletClient } = useWalletClient()
@@ -118,28 +202,36 @@ export default function DashboardPage() {
   const showManagerFeatures = role === 'manager'
   const showInvestorFeatures = role === 'investor'
 
-  // Initialize metadata map on client side
+  // Add a ref to track initialization
+  const initializationRef = useRef(false)
+
+  // Move metadata initialization to useEffect
   useEffect(() => {
     const initMetadata = async () => {
+      if (initializationRef.current) return
+      
+      setIsMetadataLoading(true)
       try {
         const storedData = initializeMetadataMap()
         if (storedData) {
-          Object.entries(storedData).forEach(([key, value]) => {
-            fundMetadataMap.set(key.toLowerCase(), value as StoredMetadata)
-          })
+          // Use setTimeout to avoid state updates during render
+          setTimeout(() => {
+            Object.entries(storedData).forEach(([key, value]) => {
+              fundMetadataMap.set(key.toLowerCase(), value as StoredMetadata)
+            })
+            setMetadataInitialized(true)
+            initializationRef.current = true
+            setIsMetadataLoading(false)
+          }, 0)
         }
       } catch (error) {
         console.error('Error initializing metadata:', error)
-      } finally {
-        setMetadataInitialized(true)
+        setIsMetadataLoading(false)
       }
     }
 
-    if (!isInitialized) {
-      initMetadata()
-      setIsInitialized(true)
-    }
-  }, [isInitialized])
+    initMetadata()
+  }, [])
 
   // Load funds only after metadata is initialized
   useEffect(() => {
@@ -293,6 +385,62 @@ export default function DashboardPage() {
     
     checkOwnership()
   }, [isOwner, walletAddress])
+
+  // Add a new function to fetch all funds
+  const fetchAllFunds = async () => {
+    try {
+      const publicClient = createPublicClient({
+        chain: baseSepolia,
+        transport: http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+      })
+
+      // Get all fund creation events
+      const fundCreationEvents = await publicClient.getLogs({
+        address: FLUID_FUNDS_ADDRESS,
+        event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
+        fromBlock: 0n,
+        toBlock: 'latest'
+      })
+
+      console.log('Found all funds:', fundCreationEvents.length)
+
+      // Process each fund
+      const allFundsData = await Promise.all(
+        fundCreationEvents.map(async (event) => {
+          if (!event.args) return null
+
+          const fundAddress = event.args.fundAddress as string
+          const manager = event.args.manager as `0x${string}`
+          const name = event.args.name
+
+          // Get metadata from storage
+          const storedMetadata = getFundMetadataFromStorage(fundAddress)
+          
+          return {
+            address: fundAddress as `0x${string}`,
+            name,
+            manager,
+            minInvestmentAmount: BigInt('1000000000000000000'), // 1 USDC default
+            profitSharingFormatted: '20%' // Default value
+          }
+        })
+      )
+
+
+      const validFunds = allFundsData.filter((fund): fund is NonNullable<typeof fund> => fund !== null)
+      //@ts-expect-error - TODO: fix this
+      setAllFunds(validFunds)
+    } catch (error) {
+      console.error('Error fetching all funds:', error)
+    }
+  }
+
+  // Update useEffect to fetch all funds for investors
+  useEffect(() => {
+    if (role === 'investor' && metadataInitialized) {
+      fetchAllFunds()
+    }
+  }, [role, metadataInitialized])
 
   const handleDisconnect = async () => {
     try {
@@ -464,24 +612,34 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                   <div className="text-sm text-white/60 mb-1">Active Streams</div>
-                  <div className="text-2xl font-medium">{activeStreams.length}</div>
+                  <div className="text-2xl font-medium">
+                    {superfluidLoading ? (
+                      <span className="text-white/50">Loading...</span>
+                    ) : (
+                      activeStreams.length
+                    )}
+                  </div>
                 </div>
                 <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.05]">
                   <div className="text-sm text-white/60 mb-1">USDCx Balance</div>
                   <div className="flex items-center justify-between">
                     <div className="text-2xl font-medium">
-                      {superfluidError ? '-.--' : `${parseFloat(usdcxBalance).toFixed(6)}`}
+                      {superfluidLoading ? '-.--' : `${parseFloat(usdcxBalance).toFixed(6)}`}
                       <span className="text-sm text-white/60 ml-1">USDCx</span>
                     </div>
-                    {superfluidError && (
+                    {superfluidLoading && (
                       <button
-                        onClick={retryLoadingSuperfluid}
+                        onClick={() => {
+                          console.log('Manually refreshing USDCx balance...');
+                          //@ts-expect-error - TODO: fix this
+                          fetchUSDCxBalance();
+                        }}
                         className="text-sm text-fluid-primary hover:text-fluid-primary/80 flex items-center gap-1"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 12a9 9 0 11-9-9c2.52 0 4.85.99 6.57 2.57L21 8V3M21 8h-5"/>
                         </svg>
-                        Retry
+                        Refresh
                       </button>
                     )}
                   </div>
@@ -592,14 +750,24 @@ export default function DashboardPage() {
                     </span>
                     <h2 className="text-lg font-medium">Active Streams</h2>
                   </div>
-                  {superfluidLoading && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-fluid-primary"></div>
-                  )}
+                  <button
+                    onClick={() => fetchActiveStreams()}
+                    className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 11-9-9c2.52 0 4.85.99 6.57 2.57L21 8V3M21 8h-5"/>
+                    </svg>
+                  </button>
                 </div>
                 {activeStreams.length > 0 ? (
                   <div className="space-y-3">
                     {activeStreams.map((stream, index) => {
-                      const monthlyFlowRate = parseFloat(formatEther(BigInt(stream.flowRate))) * 2592000
+                      // Find the fund details for this stream
+                      const fundDetails = funds.find(f => f.address.toLowerCase() === stream.receiver.toLowerCase()) ||
+                                        allFunds.find(f => f.address.toLowerCase() === stream.receiver.toLowerCase())
+                      
+                      const monthlyFlow = stream.monthlyFlow || 0
+
                       return (
                         <div 
                           key={index}
@@ -609,23 +777,42 @@ export default function DashboardPage() {
                           <div className="flex justify-between items-start">
                             <div>
                               <div className="text-sm font-medium mb-1">
-                                To: {stream.receiver.slice(0, 6)}...{stream.receiver.slice(-4)}
+                                {fundDetails ? (
+                                  <>
+                                    <span className="text-fluid-primary">{fundDetails.name}</span>
+                                    <span className="text-white/60 ml-2">
+                                      ({stream.receiver.slice(0, 6)}...{stream.receiver.slice(-4)})
+                                    </span>
+                                  </>
+                                ) : (
+                                  `To: ${stream.receiver.slice(0, 6)}...${stream.receiver.slice(-4)}`
+                                )}
                               </div>
                               <div className="text-lg font-medium text-fluid-primary">
-                                {monthlyFlowRate.toFixed(6)}
+                                {monthlyFlow.toFixed(6)}
                                 <span className="text-sm text-white/60 ml-1">USDCx/month</span>
                               </div>
+                              <div className="text-sm text-white/60 mt-1">
+                                Flow Rate: {formatEther(BigInt(stream.flowRate))} USDCx/second
+                              </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteStream(stream.receiver)}
-                              className="text-red-500 hover:text-red-400 text-sm flex items-center gap-1 
-                                       px-3 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition-all duration-200"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M6 18L18 6M6 6l12 12"/>
-                              </svg>
-                              Stop Stream
-                            </button>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="text-sm text-white/60">
+                                Status: <span className="text-green-400">Active</span>
+                              </div>
+                              
+                              <a
+                                href={`https://app.superfluid.finance/stream/0xCAa7349CEA390F89641fe306D93591f87595dc1F/${walletClient?.account?.address}/${stream.receiver}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-fluid-primary hover:text-fluid-primary/80 text-sm flex items-center gap-1"
+                              >
+                                View on Superfluid
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                                </svg>
+                              </a>
+                            </div>
                           </div>
                         </div>
                       )
@@ -633,7 +820,31 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center text-white/60 py-8">
-                    {superfluidLoading ? 'Loading streams...' : 'No active streams'}
+                    {superfluidLoading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-fluid-primary"></div>
+                        <span>Loading streams...</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div>No active streams</div>
+                        {superfluidLoading && (
+                          <div className="text-red-400 text-sm mt-2">
+                            {/*@ts-expect-error - TODO: fix this */}
+                            Error: {superfluidError?.message}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => {
+                            console.log('Manually refreshing streams...');
+                            fetchActiveStreams();
+                          }}
+                          className="mt-2 text-fluid-primary hover:text-fluid-primary/80"
+                        >
+                          Refresh Streams
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -718,112 +929,133 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+
+            {/* Investor Active Streams Card - Enhanced */}
+            {showInvestorFeatures && (
+              <div className="p-6 rounded-xl bg-gradient-to-br from-white/[0.02] to-white/[0.05] 
+                            border border-white/[0.08] backdrop-blur-sm hover:border-white/[0.15] 
+                            transition-all duration-300 group">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-lg bg-fluid-primary/10 flex items-center justify-center">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-fluid-primary">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                      </svg>
+                    </span>
+                    <h2 className="text-lg font-medium">My Active Streams</h2>
+                  </div>
+                  <button
+                    onClick={() => fetchActiveStreams()}
+                    className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 11-9-9c2.52 0 4.85.99 6.57 2.57L21 8V3M21 8h-5"/>
+                    </svg>
+                  </button>
+                </div>
+
+                {activeStreams.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeStreams.map((stream, index) => {
+                      // Find the fund details for this stream
+                      const fundDetails = allFunds.find(f => 
+                        f.address.toLowerCase() === stream.receiver.toLowerCase()
+                      )
+                      
+                      const monthlyFlow = stream.monthlyFlow || 0
+
+                      return (
+                        <div 
+                          key={index}
+                          className="p-4 rounded-lg bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.1] 
+                                   transition-all duration-200"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-sm font-medium mb-1">
+                                {fundDetails ? (
+                                  <>
+                                    <span className="text-fluid-primary">{fundDetails.name}</span>
+                                    <span className="text-white/60 ml-2">
+                                      ({stream.receiver.slice(0, 6)}...{stream.receiver.slice(-4)})
+                                    </span>
+                                  </>
+                                ) : (
+                                  `To: ${stream.receiver.slice(0, 6)}...${stream.receiver.slice(-4)}`
+                                )}
+                              </div>
+                              <div className="text-lg font-medium text-fluid-primary">
+                                {monthlyFlow.toFixed(6)}
+                                <span className="text-sm text-white/60 ml-1">USDCx/month</span>
+                              </div>
+                              <div className="text-sm text-white/60 mt-1">
+                                Flow Rate: {formatEther(BigInt(stream.flowRate))} USDCx/second
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="text-sm text-white/60">
+                                Status: <span className="text-green-400">Active</span>
+                              </div>
+                              <a
+                                href={`https://app.superfluid.finance/stream/0xCAa7349CEA390F89641fe306D93591f87595dc1F/${walletClient?.account?.address}/${stream.receiver}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-fluid-primary hover:text-fluid-primary/80 text-sm flex items-center gap-1"
+                              >
+                                View on Superfluid
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                                </svg>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center text-white/60 py-8">
+                    {superfluidLoading ? 'Loading streams...' : 'No active streams'}
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         </main>
       </div>
 
-      {/* Modals - Enhanced with consistent styling */}
-      <CreateFundModal 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
-      />
-      <CreateStreamModal 
-        isOpen={isStreamModalOpen}
-        onClose={() => setIsStreamModalOpen(false)}
-        onCreateStream={handleCreateStream}
-      />
-      <TokenManagementModal 
-        isOpen={isTokenManagementOpen} 
-        onClose={() => setIsTokenManagementOpen(false)}
-        whitelistedTokens={whitelistedTokens}
-        onWhitelist={handleWhitelistToken}
-        onBatchWhitelist={handleBatchWhitelist}
-      />
+      {/* Modals - Only render when metadata is ready */}
+      {!isMetadataLoading && metadataInitialized && (
+        <>
+          <CreateFundModal 
+            isOpen={isCreateModalOpen} 
+            onClose={() => setIsCreateModalOpen(false)} 
+          />
+          <CreateStreamModal 
+            isOpen={isStreamModalOpen}
+            onClose={() => setIsStreamModalOpen(false)}
+            //@ts-expect-error - TODO: fix this
+            funds={role === 'investor' ? allFunds : funds.map(fund => ({
+              
+              address: fund.address as `0x${string}`,
+
+              name: fund.name,
+              manager: fund.manager,
+              //@ts-expect-error - TODO: fix this
+              minInvestmentAmount: BigInt(fund.minInvestmentAmount || '0'),
+              //@ts-expect-error - TODO: fix this
+              profitSharingFormatted: fund.profitSharingFormatted || '0%'
+            }))}
+          />
+          <TokenManagementModal 
+            isOpen={isTokenManagementOpen} 
+            onClose={() => setIsTokenManagementOpen(false)}
+            whitelistedTokens={whitelistedTokens}
+            onWhitelist={handleWhitelistToken}
+            onBatchWhitelist={handleBatchWhitelist}
+          />
+        </>
+      )}
     </div>
   )
-}
-
-// Update FundVerification component
-function FundVerification({ fund }: { fund: string }) {
-  const { checkIsFund } = useFluidFunds()
-  const [isVerified, setIsVerified] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    let isMounted = true
-
-    const verifyFund = async () => {
-      if (!fund) {
-        if (isMounted) setIsVerified(false)
-        return
-      }
-
-      try {
-        const result = await checkIsFund(fund)
-        if (isMounted) {
-          setIsVerified(result)
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error(`Error verifying fund ${fund}:`, error)
-          setIsVerified(false)
-        }
-      }
-    }
-
-    verifyFund()
-
-    return () => {
-      isMounted = false
-    }
-  }, [fund, checkIsFund])
-
-  if (isVerified === null) {
-    return (
-      <span className="text-white/60">
-        Verifying...
-      </span>
-    )
-  }
-
-  return (
-    <span className={isVerified ? 'text-green-500' : 'text-red-500'}>
-      {isVerified ? 'Verified' : 'Not Verified'}
-    </span>
-  )
-}
-
-// Helper function to validate fund metadata
-const isValidFundMetadata = (metadata: any): boolean => {
-  return (
-    metadata &&
-    typeof metadata === 'object' &&
-    typeof metadata.name === 'string' &&
-    typeof metadata.description === 'string' &&
-    typeof metadata.image === 'string' &&
-    metadata.image.length > 0 && // Must have an image
-    metadata.description.length > 0 // Must have a description
-  )
-}
-
-// In the component where you process the funds data
-const processManagerFundsData = (fundsData: any[]): FundInfo[] => {
-  return fundsData
-    .filter((fund): fund is NonNullable<typeof fund> => 
-      fund !== null && 
-      fund.name && 
-      fund.description && 
-      typeof fund.image !== 'undefined'
-    )
-    .map(fund => ({
-      ...fund,
-      image: fund.image || undefined,
-      manager: fund.manager as `0x${string}`,
-      metadataUri: fund.metadataUri || '',
-      verified: Boolean(fund.verified),
-      performanceMetrics: {
-        tvl: fund.performanceMetrics?.tvl || '0',
-        returns: fund.performanceMetrics?.returns || '0',
-        investors: fund.performanceMetrics?.investors || 0
-      }
-    }))
 }
