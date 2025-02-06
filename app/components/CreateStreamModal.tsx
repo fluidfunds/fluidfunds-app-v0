@@ -81,10 +81,19 @@ export function CreateStreamModal({ isOpen, onClose, funds }: CreateStreamModalP
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {funds.length > 0 ? (
               funds.map((fund) => (
-                <div
+                <button
                   key={fund.address}
                   onClick={() => setSelectedFund(fund)}
-                  className={`p-4 rounded-lg cursor-pointer transition-all duration-200 ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setSelectedFund(fund)
+                    }
+                  }}
+                  type="button"
+                  role="option"
+                  aria-selected={selectedFund?.address === fund.address}
+                  className={`w-full p-4 rounded-lg cursor-pointer transition-all duration-200 text-left ${
                     selectedFund?.address === fund.address
                       ? 'bg-fluid-primary/20 border-fluid-primary'
                       : 'bg-white/[0.05] border-white/[0.08] hover:bg-white/[0.08]'
@@ -101,7 +110,7 @@ export function CreateStreamModal({ isOpen, onClose, funds }: CreateStreamModalP
                       Min: {formatEther(fund.minInvestmentAmount)} USDC
                     </div>
                   </div>
-                </div>
+                </button>
               ))
             ) : (
               <div className="text-center text-white/60 py-4">

@@ -158,10 +158,18 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Image Upload Section */}
           <div className="flex flex-col items-center gap-4">
-            <div 
+            <button 
               className="w-48 h-48 rounded-xl bg-white/[0.05] border-2 border-dashed border-white/[0.08] 
                          flex items-center justify-center cursor-pointer overflow-hidden relative"
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  fileInputRef.current?.click()
+                }
+              }}
+              aria-label="Upload fund image"
+              type="button"
             >
               {previewImage ? (
                 <>
@@ -181,7 +189,7 @@ export function CreateFundModal({ isOpen, onClose }: CreateFundModalProps) {
               ) : (
                 <span className="text-white/40">Click to upload image</span>
               )}
-            </div>
+            </button>
             <input
               type="file"
               ref={fileInputRef}
