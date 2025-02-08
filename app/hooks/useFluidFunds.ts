@@ -42,13 +42,7 @@ export function useFluidFunds() {
     }
   }, [publicClient])
 
-  const setTokenWhitelisted = useCallback(async (
-    tokenAddress: `0x${string}`, 
-    status: boolean
-  ): Promise<boolean> => {
-    console.log('Token whitelist functionality temporarily disabled', { tokenAddress, status })
-    return false
-  }, [])
+ 
 
   const isOwner = useCallback(async (address?: string): Promise<boolean> => {
     if (!publicClient || !address) return false
@@ -103,22 +97,7 @@ export function useFluidFunds() {
     }
   }, [publicClient, walletClient])
 
-  const getAllWhitelistedTokens = useCallback(async (): Promise<`0x${string}`[]> => {
-    if (!publicClient) return []
-
-    try {
-      const tokens = await publicClient.readContract({
-        address: FLUID_FUNDS_ADDRESS,
-        abi: FLUID_FUNDS_ABI,
-        functionName: 'getWhitelistedTokens'
-      }) as `0x${string}`[]
-
-      return tokens
-    } catch (error) {
-      console.error('Error getting whitelisted tokens:', error)
-      return []
-    }
-  }, [publicClient])
+  
 
   const getFundMetadataUri = useCallback(async (fundAddress: string): Promise<string> => {
     if (!publicClient) return ''
@@ -208,8 +187,6 @@ export function useFluidFunds() {
     checkIsFund,
     loading,
     getAllFundsWithMetadata,
-    getAllWhitelistedTokens,
-    setTokenWhitelisted,
     isOwner
   }
 }

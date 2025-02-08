@@ -11,12 +11,10 @@ import { CreateFundModal } from '@/app/components/CreateFundModal'
 import { useFluidFunds } from '@/app/hooks/useFluidFunds'
 import { CreateStreamModal } from '@/app/components/CreateStreamModal'
 import { useSuperfluid } from '@/app/hooks/useSuperfluid'
-import { toast } from 'sonner'
 import { formatEther, getAddress } from 'viem'
 import { getFundMetadata, getIPFSUrl } from '@/app/services/ipfs'
 import Image from 'next/image'
 import { useRole } from '@/app/hooks/useRole'
-import { TokenManagementModal } from '@/app/components/TokenManagementModal'
 import { useWalletClient, useAccount } from 'wagmi'
 import { 
   initializeMetadataMap, 
@@ -186,7 +184,7 @@ export default function DashboardPage() {
   const [metadataInitialized, setMetadataInitialized] = useState(false)
   const [isMetadataLoading, setIsMetadataLoading] = useState(true)
   
-  const { getAllFundsWithMetadata, setTokenWhitelisted, isOwner, loading: fundsLoading, getAllWhitelistedTokens } = useFluidFunds()
+  const { getAllFundsWithMetadata, isOwner, loading: fundsLoading } = useFluidFunds()
   const { 
     activeStreams, 
     usdcxBalance, 
@@ -351,23 +349,7 @@ export default function DashboardPage() {
     }
   }, [walletAddress, metadataInitialized])
 
-  // Add effect to fetch whitelisted tokens on load
-  useEffect(() => {
-    const fetchWhitelistedTokens = async () => {
-      if (!isOwner) return
 
-      try {
-        // Get all tokens from contract and convert to mutable array
-        const tokens = await getAllWhitelistedTokens()
-        setWhitelistedTokens([...tokens]) // Convert readonly array to mutable array
-      } catch (error) {
-        console.error('Failed to fetch whitelisted tokens:', error)
-        toast.error('Failed to load whitelisted tokens')
-      }
-    }
-
-    fetchWhitelistedTokens()
-  }, [isOwner, getAllWhitelistedTokens])
 
   // Update the ownership check effect
   useEffect(() => {
@@ -463,57 +445,8 @@ export default function DashboardPage() {
     }
   }
 
-  const handleWhitelistToken = async (tokenAddress: string, status: boolean) => {
-    try {
-      // Ensure the address is properly formatted
-      const formattedAddress = getAddress(tokenAddress) as `0x${string}` // Cast to correct type
-      const result = await setTokenWhitelisted(formattedAddress, status)
-      
-      if (result) {
-        // Refresh whitelist status
-        const tokens = await getAllWhitelistedTokens()
-        const isWhitelisted = tokens.includes(formattedAddress)
-        
-        if (isWhitelisted) {
-          setWhitelistedTokens(prev => [...prev, formattedAddress])
-        } else {
-          setWhitelistedTokens(prev => prev.filter(t => t !== formattedAddress))
-        }
-        
-        toast.success(`Token ${status ? 'whitelisted' : 'removed from whitelist'}`)
-      } else {
-        toast.error('Token whitelist functionality is temporarily disabled')
-      }
-    } catch (error) {
-      console.error('Failed to update token whitelist:', error)
-      toast.error('Invalid token address or failed to update whitelist')
-    }
-  }
-
+  
   // Update batch whitelist handler to handle address formatting
-  const handleBatchWhitelist = async () => {
-    try {
-      setProcessingBatch(true)
-      const tokens = batchTokens
-        .split('\n')
-        .map(t => t.trim())
-        .filter(t => t.length > 0)
-        .map(t => getAddress(t)) // Format all addresses
-
-      // Process tokens in batch
-      await Promise.all(
-        tokens.map(token => handleWhitelistToken(token, true))
-      )
-
-      setBatchTokens('')
-      toast.success('Batch whitelist completed')
-    } catch (error) {
-      console.error('Failed to process batch:', error)
-      toast.error('Invalid token addresses or failed to process batch')
-    } finally {
-      setProcessingBatch(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -1047,13 +980,7 @@ export default function DashboardPage() {
               profitSharingFormatted: fund.profitSharingFormatted || '0%'
             }))}
           />
-          <TokenManagementModal 
-            isOpen={isTokenManagementOpen} 
-            onClose={() => setIsTokenManagementOpen(false)}
-            whitelistedTokens={whitelistedTokens}
-            onWhitelist={handleWhitelistToken}
-            onBatchWhitelist={handleBatchWhitelist}
-          />
+         
         </>
       )}
     </div>
