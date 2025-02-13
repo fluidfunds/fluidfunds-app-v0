@@ -173,12 +173,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isStreamModalOpen, setIsStreamModalOpen] = useState(false)
-  const [isTokenManagementOpen, setIsTokenManagementOpen] = useState(false)
   const [funds, setFunds] = useState<FundInfo[]>([])
-  const [tokenAddress, setTokenAddress] = useState('')
-  const [whitelistedTokens, setWhitelistedTokens] = useState<string[]>([])
-  const [batchTokens, setBatchTokens] = useState<string>('')
-  const [processingBatch, setProcessingBatch] = useState(false)
   const [isUserOwner, setIsUserOwner] = useState(false)
   const [allFunds, setAllFunds] = useState<FundInfo[]>([])
   const [metadataInitialized, setMetadataInitialized] = useState(false)
@@ -605,17 +600,6 @@ export default function DashboardPage() {
                     Create New Fund
                   </button>
 
-                  {/* Add Token Management Button */}
-                  <button
-                    onClick={() => setIsTokenManagementOpen(true)}
-                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] text-white font-medium 
-                             hover:bg-white/[0.08] transition-all duration-200 flex items-center justify-center gap-2"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                    Manage Tokens
-                  </button>
 
                   <button
                     onClick={() => window.open('https://app.superfluid.finance/wrap')}
