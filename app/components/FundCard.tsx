@@ -4,6 +4,9 @@ import { formatEther } from 'viem'
 import { useState } from 'react'
 import { useSuperfluid } from '@/app/hooks/useSuperfluid'
 import { toast } from 'sonner'
+import FlowingBalance from './FlowingBalance'
+import { useStreamData } from '../hooks/useStreamData';
+import { useAccount } from 'wagmi';
 
 // Update FundInfo interface with proper types
 interface FundInfo {
@@ -28,6 +31,11 @@ const FundCard = ({ fund }: FundCardProps) => {
   const [streamAmount, setStreamAmount] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const { createStream } = useSuperfluid()
+  const { address: userAddress } = useAccount();
+  const streamData = useStreamData(
+    userAddress as `0x${string}`, 
+    fund.address
+  );
 
   // Format the subscription end time
   const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString()
@@ -93,6 +101,21 @@ const FundCard = ({ fund }: FundCardProps) => {
               {fund.address.slice(0, 6)}...{fund.address.slice(-4)}
             </p>
           </div>
+        </div>
+
+        {/* Stream Status Section */}
+        <div className="mb-4">
+          <div className="text-sm text-white/50">Stream Status</div>
+          {streamData.isActive ? (
+            <FlowingBalance
+              startingBalance={BigInt(0)}
+              startingBalanceDate={new Date(streamData.timestamp * 1000)}
+              flowRate={streamData.flowRate}
+              className="text-xl font-medium text-fluid-primary"
+            />
+          ) : (
+            <div className="text-sm text-white/30">No active stream</div>
+          )}
         </div>
 
         {/* Fund Details */}
@@ -170,4 +193,4 @@ const FundCard = ({ fund }: FundCardProps) => {
   )
 }
 
-export default FundCard 
+export default FundCard
