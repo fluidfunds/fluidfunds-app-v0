@@ -6,7 +6,7 @@ import { Logo } from "./icons/Logo";
 const navigation = [
   { name: 'Funds', href: '#funds' },
   { name: 'Benefits', href: '#benefits' },
-  { name: 'Leaderboard', href: '/leaderboard' }, // Changed to page route
+  { name: 'Leaderboard', href: '/leaderboard' },
   { name: 'FAQ', href: '#faq' }
 ]
 
@@ -32,30 +32,25 @@ const Header = () => {
           </Link>
 
           <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-            <button 
-              onClick={() => scrollToSection('funds')}
-              className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-            >
-              Funds
-            </button>
-            <button 
-              onClick={() => scrollToSection('benefits')}
-              className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-            >
-              Benefits
-            </button>
-            <Link 
-              href="/leaderboard"
-              className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-            >
-              Leaderboard
-            </Link>
-            <button 
-              onClick={() => scrollToSection('faq')}
-              className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-            >
-              FAQ
-            </button>
+            {navigation.map((item) => (
+              item.href.startsWith('#') ? (
+                <button 
+                  key={item.name}
+                  onClick={() => scrollToSection(item.href.slice(1))}
+                  className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
+                >
+                  {item.name}
+                </button>
+              ) : (
+                <Link 
+                  key={item.name}
+                  href={item.href}
+                  className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
+                >
+                  {item.name}
+                </Link>
+              )
+            ))}
           </nav>
 
           <div className="flex items-center gap-3">

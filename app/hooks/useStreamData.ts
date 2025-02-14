@@ -9,6 +9,17 @@ interface StreamData {
   };
 }
 
+// Add interface for stream data structure
+interface Stream {
+  currentFlowRate: string
+  streamedUntilUpdatedAt: string
+  updatedAtTimestamp: string
+  token: {
+    id: string
+    symbol: string
+  }
+}
+
 export function useStreamData(fundAddress: `0x${string}`) {
   const [streamData, setStreamData] = useState<StreamData>({
     currentFlowRate: '0',
@@ -55,12 +66,12 @@ export function useStreamData(fundAddress: `0x${string}`) {
 
       if (data.data?.streams?.length > 0) {
         const totalFlowRate = data.data.streams.reduce(
-          (sum: bigint, stream: any) => sum + BigInt(stream.currentFlowRate),
+          (sum: bigint, stream: Stream) => sum + BigInt(stream.currentFlowRate),
           BigInt(0)
         );
 
         const latestTimestamp = Math.max(
-          ...data.data.streams.map((s: any) => parseInt(s.updatedAtTimestamp))
+          ...data.data.streams.map((s: Stream) => parseInt(s.updatedAtTimestamp))
         );
 
         setStreamData({

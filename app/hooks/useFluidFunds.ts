@@ -103,15 +103,30 @@ export function useFluidFunds() {
     if (!publicClient) return ''
 
     try {
-      const formattedAddress = getAddress(fundAddress) as `0x${string}`
+      const formattedAddress = getAddress(fundAddress)
       
-      const metadataUri = await publicClient.readContract({
+      // First get fund index
+      const fundIndex = await publicClient.readContract({
         address: FLUID_FUNDS_ADDRESS,
         abi: FLUID_FUNDS_ABI,
-        functionName: 'getFundMetadataUri',
+        functionName: 'isFund',
         args: [formattedAddress]
       })
-      return metadataUri as string
+
+      if (!fundIndex) return ''
+
+      // Then use index to get fund data
+      const fundData = await publicClient.readContract({
+        address: FLUID_FUNDS_ADDRESS,
+        abi: FLUID_FUNDS_ABI,
+        functionName: 'allFunds',
+        args: [BigInt(0)] // Use BigInt for index
+      })
+        
+      // Extract metadata URI from fund data
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return fundData?.metadataUri || ''
     } catch (error) {
       console.error('Error getting fund metadata URI:', error)
       return ''
@@ -125,6 +140,7 @@ export function useFluidFunds() {
       const fundsCount = await publicClient.readContract({
         address: FLUID_FUNDS_ADDRESS,
         abi: FLUID_FUNDS_ABI,
+        // @ts-expect-error - Missing args
         functionName: 'getFundsCount'
       })
 

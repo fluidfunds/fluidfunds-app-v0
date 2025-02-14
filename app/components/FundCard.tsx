@@ -29,12 +29,9 @@ interface FundCardProps {
 }
 
 const FundCard = ({ fund }: FundCardProps) => {
-  const { createStream, activeStreams, loading } = useSuperfluid(fund.address)
+  const { createStream, loading } = useSuperfluid(fund.address)
   const [streamAmount, setStreamAmount] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
   const { address: userAddress } = useAccount()
-  
-  // Only pass fund address
   const streamData = useStreamData(fund.address)
 
   // Format the subscription end time
@@ -66,7 +63,6 @@ const FundCard = ({ fund }: FundCardProps) => {
       return
     }
 
-    setIsStreaming(true)
     try {
       const hash = await createStream(fund.address, streamAmount)
       console.log('Stream created with hash:', hash)
@@ -75,8 +71,6 @@ const FundCard = ({ fund }: FundCardProps) => {
     } catch (error) {
       console.error('Error creating stream:', error)
       toast.error('Failed to create stream. Please ensure you have enough USDCx balance.')
-    } finally {
-      setIsStreaming(false)
     }
   }
 
@@ -139,7 +133,7 @@ const FundCard = ({ fund }: FundCardProps) => {
           {streamData.currentFlowRate ? (
             <FlowingBalance
               startingBalance={BigInt(0)}
-              startingBalanceDate={new Date(streamData.updatedAtTimestamp * 1000)}
+              startingBalanceDate={new Date(Number(streamData.updatedAtTimestamp) * 1000)}
               flowRate={BigInt(streamData.currentFlowRate)}
               className="text-2xl font-bold text-fluid-primary"
             />
@@ -168,29 +162,49 @@ const FundCard = ({ fund }: FundCardProps) => {
 
             <button
               onClick={handleCreateStream}
-              disabled={isStreaming}
+              disabled={loading} // Use loading instead of isStreaming
               className="w-full py-4 rounded-xl bg-fluid-primary text-white font-bold text-lg
                        hover:bg-fluid-primary/90 transition-colors disabled:opacity-50
                        shadow-lg shadow-fluid-primary/20"
             >
-              {isStreaming ? 'Setting up your investment...' : 'Start Investing Now'}
+              {loading ? 'Setting up your investment...' : 'Start Investing Now'}
             </button>
 
             <Link
               href={`/fund/${fund.address}`}
-              className="block w-full text-center py-3 text-white/70 hover:text-fluid-primary
-                       font-medium transition-colors"
+              className="block w-full py-3 px-4 rounded-xl border border-fluid-primary/30 
+                       text-center text-fluid-primary font-medium hover:bg-fluid-primary/10 
+                       transition-all duration-200 group"
             >
-              View Detailed Performance →
+              <span className="flex items-center justify-center gap-2">
+                Check Performance & Analytics
+                <TrendingUp className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </span>
             </Link>
           </div>
         ) : (
-          <div className="bg-white/[0.03] rounded-xl p-6 text-center">
-            <h4 className="text-white font-medium mb-3">Ready to Invest?</h4>
-            <p className="text-white/60 text-sm mb-4">
-              Connect your wallet to start investing in this fund
-            </p>
-            <w3m-button />
+          <div className="space-y-4">
+            <div className="bg-white/[0.03] rounded-xl p-6 text-center">
+              <h4 className="text-white font-medium mb-3">Ready to Invest?</h4>
+              <p className="text-white/60 text-sm mb-4">
+                Connect your wallet to start investing in this fund
+              </p>
+              <button className="w-full py-3 px-4 rounded-xl bg-fluid-primary text-white font-medium hover:bg-fluid-primary/90 transition-all duration-200">
+                Connect Wallet
+              </button>
+            </div>
+
+            <Link
+              href={`/fund/${fund.address}`}
+              className="block w-full py-3 px-4 rounded-xl bg-white/[0.03] 
+                       text-center text-white/70 font-medium hover:bg-white/[0.06] 
+                       transition-all duration-200 group"
+            >
+              <span className="flex items-center justify-center gap-2">
+                View Fund Analytics
+                <TrendingUp className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </Link>
           </div>
         )}
 

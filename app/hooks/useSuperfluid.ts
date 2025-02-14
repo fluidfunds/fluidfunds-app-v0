@@ -3,6 +3,8 @@ import { usePublicClient, useWalletClient } from 'wagmi'
 import { SUPERFLUID_ADDRESSES } from '@/app/config/contracts'
 import { type PublicClient, formatEther } from 'viem'
 
+// Add Superfluid subgraph URL
+const SUPERFLUID_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia'
 const CFAv1ForwarderAddress = '0xcfA132E353cB4E398080B9700609bb008eceB125'
 
 const CFAv1ForwarderABI = [
@@ -48,6 +50,9 @@ const USDCxABI = [
 
 // Add proper types for stream data
 interface StreamData {
+  sender: {
+    id: string
+  }
   receiver: {
     id: string
   }
