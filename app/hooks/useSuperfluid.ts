@@ -4,6 +4,7 @@ import { SUPERFLUID_ADDRESSES } from '@/app/config/contracts'
 import { type PublicClient, formatEther } from 'viem'
 
 // Add Superfluid subgraph URL
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SUPERFLUID_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia'
 const CFAv1ForwarderAddress = '0xcfA132E353cB4E398080B9700609bb008eceB125'
 
@@ -65,6 +66,7 @@ interface StreamData {
   updatedAtTimestamp: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface GraphQLResponse {
   data?: {
     streams: StreamData[]
@@ -85,7 +87,9 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
   const { data: walletClient } = useWalletClient()
   const client = usePublicClient()
   const publicClient = client as PublicClient
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeStreams, setActiveStreams] = useState<Stream[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(false)
   const [usdcxBalance, setUsdcxBalance] = useState('0')
 
@@ -120,23 +124,18 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
   // Update fetchActiveStreams to only run if fundAddress is provided
   const fetchActiveStreams = useCallback(async () => {
     if (!fundAddress) return
-    
-    setLoading(true)
+
     try {
       const query = `
-        query($fund: ID!) {
+        query($fund: String!) {
           streams(
             where: {
               receiver: $fund,
               currentFlowRate_gt: "0"
             }
           ) {
-            sender {
-              id
-            }
-            receiver {
-              id
-            }
+            sender { id }
+            receiver { id }
             currentFlowRate
             token {
               id
@@ -148,48 +147,38 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
         }
       `
 
-      const response = await fetch(
-        SUPERFLUID_SUBGRAPH_URL,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query,
-            variables: {
-              fund: fundAddress.toLowerCase()
-            }
-          })
-        }
-      )
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Origin': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      }
+
+      const response = await fetch(process.env.NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL!, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          query,
+          variables: {
+            fund: fundAddress.toLowerCase()
+          }
+        })
+      })
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const data = (await response.json()) as GraphQLResponse
+      const data = await response.json()
       
-      if (data.data?.streams) {
-        const streams = data.data.streams.map((stream: StreamData) => {
-          const mappedStream = {
-            sender: stream.sender.id,
-            receiver: stream.receiver.id,
-            flowRate: stream.currentFlowRate,
-            token: stream.token.id,
-            streamedUntilUpdatedAt: stream.streamedUntilUpdatedAt,
-            updatedAtTimestamp: stream.updatedAtTimestamp,
-            monthlyFlow: Number(formatEther(BigInt(stream.currentFlowRate))) * 2592000
-          }
-          return mappedStream
-        })
-        setActiveStreams(streams)
-      } else {
-        setActiveStreams([])
+      if (data.errors) {
+        console.error('GraphQL Errors:', data.errors)
+        return
       }
+
+      return data.data.streams
     } catch (error) {
       console.error('Error fetching fund streams:', error)
-      setActiveStreams([])
-    } finally {
-      setLoading(false)
+      return []
     }
   }, [fundAddress])
 
