@@ -1,4 +1,5 @@
 import React, { useEffect, useState, memo } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { formatEther } from 'viem';
 
 // Types
@@ -6,20 +7,20 @@ interface FlowingBalanceProps {
   startingBalance: bigint;
   startingBalanceDate: Date;
   flowRate: bigint;
+  formatValue: (value: bigint) => string;
   className?: string;
 }
-
-// Constants
-const ANIMATION_MINIMUM_STEP_TIME = 100;
 
 // Component
 const FlowingBalance = memo(({ 
   startingBalance, 
   startingBalanceDate, 
   flowRate, 
+  formatValue,
   className 
 }: FlowingBalanceProps) => {
-  const [currentBalance, setCurrentBalance] = useState(startingBalance);
+  const [currentBalance, setCurrentBalance] = useState<bigint>(startingBalance);
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
 
   useEffect(() => {
     if (flowRate === BigInt(0)) {
@@ -27,28 +28,37 @@ const FlowingBalance = memo(({
       return;
     }
 
-    let lastAnimationTimestamp = 0;
+    let frameId: number;
 
     const updateBalance = (timestamp: number) => {
-      if (timestamp - lastAnimationTimestamp >= ANIMATION_MINIMUM_STEP_TIME) {
-        const timeDelta = BigInt(Date.now() - startingBalanceDate.getTime());
-        const newBalance = startingBalance + (flowRate * timeDelta) / BigInt(1000);
-        setCurrentBalance(newBalance);
-        lastAnimationTimestamp = timestamp;
-      }
-      requestAnimationFrame(updateBalance);
+      const deltaTime = timestamp - lastUpdate;
+      setLastUpdate(timestamp);
+      
+      const streamedAmount = (flowRate * BigInt(Math.floor(deltaTime))) / BigInt(1000);
+      setCurrentBalance(prev => prev + streamedAmount);
+      
+      frameId = requestAnimationFrame(updateBalance);
     };
 
-    const animationFrame = requestAnimationFrame(updateBalance);
-    return () => cancelAnimationFrame(animationFrame);
+    // Initial calculation
+    const initialElapsed = Date.now() - startingBalanceDate.getTime();
+    const initialStreamed = (flowRate * BigInt(Math.floor(initialElapsed))) / BigInt(1000);
+    setCurrentBalance(startingBalance + initialStreamed);
+
+    frameId = requestAnimationFrame(updateBalance);
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startingBalance, startingBalanceDate, flowRate]);
 
+  // Simplified return without flow rate display
   return (
     <div className={`flowing-balance ${className || ''}`}>
-      {formatEther(currentBalance)} USDCx
-      <div className="text-sm text-white/50">
-        {formatEther(flowRate)} USDCx/second
-      </div>
+      {formatValue(currentBalance)}
     </div>
   );
 });

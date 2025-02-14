@@ -22,6 +22,11 @@ interface FundInfo {
   formattedDate: string
   profitSharingFormatted: string
   minInvestmentFormatted: string
+  pnl?: {
+    percentage: number
+    value: number
+    isPositive: boolean
+  }
 }
 
 interface FundCardProps {
@@ -33,12 +38,14 @@ const FundCard = ({ fund }: FundCardProps) => {
   const [streamAmount, setStreamAmount] = useState('')
   const { address: userAddress } = useAccount()
   const streamData = useStreamData(fund.address)
+  const [showInvestInput, setShowInvestInput] = useState(false)
 
   // Format the subscription end time
   const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString()
   const isSubscriptionOpen = fund.subscriptionEndTime > Date.now() / 1000
 
   // Update formatting function to handle bigint
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatInvestmentAmount = (amount: bigint) => {
     try {
       // Convert from wei to ETH (amount is already bigint)
@@ -74,146 +81,275 @@ const FundCard = ({ fund }: FundCardProps) => {
     }
   }
 
+  // Add default PNL values
+  const defaultPnl = {
+    percentage: 0,
+    value: 0,
+    isPositive: true
+  }
+
+  // Use nullish coalescing to provide default values
+  const pnl = fund.pnl ?? defaultPnl
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800
+      className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900/95 to-gray-900 
                 border border-white/[0.08] hover:border-fluid-primary/30 
-                transition-all duration-300 shadow-xl hover:shadow-fluid-primary/20"
+                transition-all duration-300 shadow-xl hover:shadow-fluid-primary/20 min-h-[600px] w-full"
     >
-      {/* Performance Badge */}
-      <div className="absolute top-4 right-4 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium">
-        +24.5% Past Month
-      </div>
-
-      <div className="p-8">
-        {/* Trader Profile Section */}
-        <div className="flex items-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-fluid-primary to-blue-600 flex items-center justify-center">
-            <Trophy className="w-8 h-8 text-white" />
+      <div className="p-6 flex flex-col h-full"> {/* Reduced padding */}
+        {/* Header Section */}
+        <div className="flex flex-col gap-4 mb-6"> {/* Changed to flex-col */}
+          <div className="flex items-center">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-fluid-primary to-fluid-primary/60 
+                          flex items-center justify-center shadow-lg shadow-fluid-primary/20">
+                <Trophy className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-xl font-bold text-white group-hover:text-fluid-primary transition-colors">
+                {fund.name}
+              </h3>
+              <div className="flex items-center text-white/60 text-sm gap-2">
+                <span>Pro Trader</span>
+                <span className="w-1 h-1 rounded-full bg-white/40" />
+                <span>Since {new Date(fund.createdAt * 1000).getFullYear()}</span>
+              </div>
+            </div>
           </div>
-          <div className="ml-4">
-            <h3 className="text-2xl font-bold text-white group-hover:text-fluid-primary transition-colors">
-              {fund.name}
-            </h3>
-            <p className="text-white/60 font-medium">
-              Pro Trader since {new Date(fund.createdAt * 1000).getFullYear()}
-            </p>
+
+          {/* Performance Badge as separate row */}
+          <div className="flex items-center gap-2 bg-green-500/10 text-green-400 
+                       px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm 
+                       border border-green-500/20 self-start">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            +24.5% Past Month
           </div>
         </div>
 
-        {/* Key Metrics Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-white/[0.03] rounded-2xl p-4">
-            <div className="flex items-center text-white/70 mb-2">
-              <DollarSign className="w-4 h-4 mr-2" />
-              Min Investment
+        {/* Metrics Grid - Reduced spacing */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
+                        hover:border-fluid-primary/20 transition-colors group/card">
+            <div className="flex items-center text-white/70 mb-3">
+              <TrendingUp className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
+              Current PNL
             </div>
-            <div className="text-xl font-bold text-white">
-              {formatInvestmentAmount(fund.minInvestmentAmount)}
+            <div className="flex flex-col">
+              <div className="text-2xl font-bold text-white flex items-center gap-2">
+                <span className={`${pnl.isPositive ? "text-green-400" : "text-red-400"} flex items-center gap-1`}>
+                  {pnl.isPositive ? "+" : "-"}{pnl.percentage.toFixed(2)}%
+                  <span className="text-sm font-normal">30d</span>
+                </span>
+              </div>
+              <div className="text-sm text-white/60 mt-1">
+                {pnl.isPositive ? "+" : "-"}${Math.abs(pnl.value).toLocaleString()}
+              </div>
             </div>
           </div>
           
-          <div className="bg-white/[0.03] rounded-2xl p-4">
-            <div className="flex items-center text-white/70 mb-2">
-              <TrendingUp className="w-4 h-4 mr-2" />
+          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
+                        hover:border-fluid-primary/20 transition-colors group/card">
+            <div className="flex items-center text-white/70 mb-3">
+              <DollarSign className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
               Profit Share
             </div>
-            <div className="text-xl font-bold text-white">
+            <div className="text-2xl font-bold text-white">
               {fund.profitSharingFormatted}
             </div>
+            <div className="text-sm text-white/60 mt-1">
+              of total profits
+            </div>
           </div>
         </div>
 
-        {/* Current Investment Status - Always show if there are active streams */}
-        <div className="mb-6 bg-fluid-primary/10 rounded-2xl p-4">
-          <div className="text-fluid-primary font-medium mb-2">Total Fund Investment Flow</div>
-          {streamData.currentFlowRate ? (
-            <FlowingBalance
-              startingBalance={BigInt(0)}
-              startingBalanceDate={new Date(Number(streamData.updatedAtTimestamp) * 1000)}
-              flowRate={BigInt(streamData.currentFlowRate)}
-              className="text-2xl font-bold text-fluid-primary"
-            />
-          ) : (
-            <div className="text-xl font-bold text-white/60">No active investments</div>
-          )}
-        </div>
-
-        {/* Investment Form - Only show when wallet is connected */}
-        {userAddress ? (
-          <div className="space-y-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <DollarSign className="w-5 h-5 text-white/40" />
+        {/* Active Streams Section - Adjusted spacing */}
+        {streamData.activeStreams.length > 0 ? (
+          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm 
+                       border border-fluid-primary/20">
+            <div className="flex justify-between items-center mb-3">
+              <div className="text-fluid-primary font-medium text-sm">Active Investment Flows</div>
+              <div className="text-xs bg-fluid-primary/10 px-2.5 py-1 rounded-full text-fluid-primary">
+                {streamData.activeStreams.length} active {streamData.activeStreams.length === 1 ? 'stream' : 'streams'}
               </div>
-              <input
-                type="number"
-                placeholder="Monthly Investment Amount"
-                value={streamAmount}
-                onChange={(e) => setStreamAmount(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/[0.05] border border-white/[0.08]
-                         text-white placeholder-white/40 focus:border-fluid-primary focus:ring-1 focus:ring-fluid-primary
-                         transition-all duration-200"
-              />
             </div>
 
-            <button
-              onClick={handleCreateStream}
-              disabled={loading} // Use loading instead of isStreaming
-              className="w-full py-4 rounded-xl bg-fluid-primary text-white font-bold text-lg
-                       hover:bg-fluid-primary/90 transition-colors disabled:opacity-50
-                       shadow-lg shadow-fluid-primary/20"
-            >
-              {loading ? 'Setting up your investment...' : 'Start Investing Now'}
-            </button>
+            <div className="space-y-3">
+              {streamData.activeStreams.map(stream => (
+                <motion.div
+                  key={stream.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.08]"
+                >
+                  {/* Top Row: Token and Flow Rate */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-fluid-primary/10 flex-shrink-0 flex items-center justify-center 
+                                  border border-fluid-primary/20">
+                        <DollarSign className="w-5 h-5 text-fluid-primary" />
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">
+                          {stream.token.symbol.replace('fUSDCx', 'USDCx')}
+                        </div>
+                        <div className="text-sm text-white/60 mt-0.5">
+                          From: {stream.sender.id.slice(0, 6)}...{stream.sender.id.slice(-4)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm text-fluid-primary/80 font-medium">
+                      {(Number(stream.currentFlowRate) / (10 ** Number(stream.token.decimals)) * 86400).toFixed(2)}/day
+                    </div>
+                  </div>
 
-            <Link
-              href={`/fund/${fund.address}`}
-              className="block w-full py-3 px-4 rounded-xl border border-fluid-primary/30 
-                       text-center text-fluid-primary font-medium hover:bg-fluid-primary/10 
-                       transition-all duration-200 group"
-            >
-              <span className="flex items-center justify-center gap-2">
-                Check Performance & Analytics
-                <TrendingUp className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
+                  {/* Bottom Row: Flowing Balance */}
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-white/60">Current Stream</div>
+                    <motion.div
+                      animate={{ opacity: [0.5, 1] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1,
+                        ease: "linear"
+                      }}
+                      className="text-lg font-bold text-fluid-primary"
+                    >
+                      <FlowingBalance
+                        startingBalance={BigInt(0)}
+                        startingBalanceDate={new Date(Number(stream.updatedAtTimestamp) * 1000)}
+                        flowRate={BigInt(stream.currentFlowRate)}
+                        formatValue={(value) => {
+                          const formatted = Number(value) / (10 ** Number(stream.token.decimals))
+                          return formatted.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 4
+                          }) + ' USDCx'
+                        }}
+                      />
+                    </motion.div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="relative h-0.5 bg-fluid-primary/5 rounded-full overflow-hidden mt-3">
+                    <motion.div
+                      className="absolute left-0 top-0 h-full bg-gradient-to-r from-fluid-primary/30 to-fluid-primary/50"
+                      animate={{ x: ["-100%", "100%"] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2,
+                        ease: "linear"
+                      }}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="bg-white/[0.03] rounded-xl p-6 text-center">
-              <h4 className="text-white font-medium mb-3">Ready to Invest?</h4>
-              <p className="text-white/60 text-sm mb-4">
-                Connect your wallet to start investing in this fund
-              </p>
-              <button className="w-full py-3 px-4 rounded-xl bg-fluid-primary text-white font-medium hover:bg-fluid-primary/90 transition-all duration-200">
-                Connect Wallet
-              </button>
-            </div>
-
-            <Link
-              href={`/fund/${fund.address}`}
-              className="block w-full py-3 px-4 rounded-xl bg-white/[0.03] 
-                       text-center text-white/70 font-medium hover:bg-white/[0.06] 
-                       transition-all duration-200 group"
-            >
-              <span className="flex items-center justify-center gap-2">
-                View Fund Analytics
-                <TrendingUp className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
+          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-2xl p-5 backdrop-blur-sm border border-fluid-primary/20">
+            <div className="text-fluid-primary font-medium">No active investments</div>
           </div>
         )}
 
-        {/* Subscription Timer */}
+        {/* Actions Section */}
+        <div className="mt-auto space-y-2">
+          {userAddress && (
+            <>
+              {!showInvestInput ? (
+                <button
+                  onClick={() => setShowInvestInput(true)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-fluid-primary to-fluid-primary/80 
+                           text-white font-bold hover:from-fluid-primary/90 hover:to-fluid-primary/70 
+                           transition-all duration-300 transform hover:-translate-y-0.5
+                           shadow-lg shadow-fluid-primary/20"
+                >
+                  Start Investing Now
+                </button>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-2"
+                >
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={streamAmount}
+                      onChange={(e) => setStreamAmount(e.target.value)}
+                      placeholder="Enter USDC amount"
+                      className="w-full py-3 px-4 rounded-xl bg-white/[0.03] border border-fluid-primary/30 
+                               text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
+                               transition-colors"
+                      min="0"
+                      step="0.01"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-fluid-primary/60 text-sm">
+                      USDC/month
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowInvestInput(false)}
+                      className="flex-1 py-3 rounded-xl border border-fluid-primary/30 
+                               text-fluid-primary font-medium hover:bg-fluid-primary/10 
+                               transition-all duration-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateStream}
+                      disabled={loading || !streamAmount}
+                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-fluid-primary to-fluid-primary/80 
+                               text-white font-bold hover:from-fluid-primary/90 hover:to-fluid-primary/70 
+                               transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
+                               shadow-lg shadow-fluid-primary/20"
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                          />
+                          Setting up...
+                        </span>
+                      ) : (
+                        'Confirm'
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </>
+          )}
+
+          <Link
+            href={`/fund/${fund.address}`}
+            className="block w-full py-2.5 rounded-xl border border-fluid-primary/30 
+                     text-center text-fluid-primary font-medium hover:bg-fluid-primary/10 
+                     transition-all duration-300"
+          >
+            View Detailed Analytics
+          </Link>
+        </div>
+
+        {/* Enhanced Subscription Timer */}
         {isSubscriptionOpen && (
-          <div className="mt-6 flex items-center justify-center text-sm text-white/60">
-            <Clock className="w-4 h-4 mr-2" />
-            Limited time offer - Ends {subscriptionEndDate}
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 flex items-center justify-center gap-2 text-sm text-white/60 
+                     bg-white/[0.02] rounded-full px-4 py-2 border border-white/[0.05]"
+          >
+            <Clock className="w-4 h-4 text-fluid-primary" />
+            Investment Window Closes: {subscriptionEndDate}
+          </motion.div>
         )}
       </div>
     </motion.div>

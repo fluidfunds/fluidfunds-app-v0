@@ -1,95 +1,159 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { SUPERFLUID_SUBGRAPH_URL, SUPERFLUID_ADDRESSES } from '../config/contracts'
 
-interface StreamData {
-  currentFlowRate: string;
-  updatedAtTimestamp: string;
-  token: {
-    symbol: string;
-  };
-}
-
-// Add interface for stream data structure
 interface Stream {
+  id: string
   currentFlowRate: string
   streamedUntilUpdatedAt: string
   updatedAtTimestamp: string
   token: {
     id: string
     symbol: string
+    decimals: string
+  }
+  sender: {
+    id: string
+  }
+  receiver: {
+    id: string
   }
 }
 
-export function useStreamData(fundAddress: `0x${string}`) {
-  const [streamData, setStreamData] = useState<StreamData>({
-    currentFlowRate: '0',
-    token: { symbol: 'USDCx' }, // Changed from FUDCx to USDCx
-    updatedAtTimestamp: (Date.now() / 1000).toString()
-  });
+interface ProcessedStream extends Stream {
+  currentAmount: number
+  flowRatePerDay: number
+  flowRatePerSecond: number  // Added for animation
+}
 
-  const fetchStreamData = useCallback(async () => {
+export function useStreamData(fundAddress?: `0x${string}`) {
+  const [activeStreams, setActiveStreams] = useState<ProcessedStream[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const formatWithDecimals = (value: string | bigint, decimals: number): number => {
+    const bigintValue = typeof value === 'string' ? BigInt(value) : value
+    return Number(bigintValue) / (10 ** decimals)
+  }
+
+  const processStream = useCallback((stream: Stream): ProcessedStream => {
+    const flowRate = BigInt(stream.currentFlowRate)
+    const decimals = Number(stream.token.decimals)
+    const now = Math.floor(Date.now() / 1000)
+    const startTime = Number(stream.updatedAtTimestamp)
+    const secondsSinceUpdate = now - startTime
+    
+    // Calculate flow rate per second with proper decimal handling
+    const flowRatePerSecond = Number(flowRate) / (10 ** decimals)
+    
+    // Calculate streamed amount since last update
+    const streamedSinceUpdate = flowRatePerSecond * secondsSinceUpdate
+    
+    // Calculate daily flow rate (86400 seconds in a day)
+    const flowRatePerDay = flowRatePerSecond * 86400
+
+    console.log('Stream details:', {
+      id: stream.id,
+      token: stream.token.symbol,
+      rawFlowRate: stream.currentFlowRate,
+      decimals,
+      flowRatePerSecond,
+      streamedSinceUpdate,
+      flowRatePerDay,
+      secondsSinceUpdate,
+      startTime,
+      now
+    })
+
+    return {
+      ...stream,
+      currentAmount: streamedSinceUpdate,
+      flowRatePerDay,
+      flowRatePerSecond // Adding this for animation
+    }
+  }, [])
+
+  const fetchActiveStreams = useCallback(async () => {
+    if (!fundAddress) return
+
     try {
-      const query = `
-        query($fund: ID!, $token: ID!) {
-          streams(
-            where: {
-              receiver: $fund,
-              token: $token,
-              currentFlowRate_gt: "0"
-            }
-          ) {
-            currentFlowRate
-            streamedUntilUpdatedAt
-            updatedAtTimestamp
-            token {
-              id
-              symbol
-            }
-          }
-        }
-      `;
+      setLoading(true)
+      setError(null)
 
-      const response = await fetch(SUPERFLUID_SUBGRAPH_URL, {
+      const response = await fetch('/api/superfluid', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          query,
+          query: `
+            query GetActiveStreams($fund: String!) {
+              account(id: $fund) {
+                inflows(
+                  where: { currentFlowRate_gt: "0" }
+                  orderBy: currentFlowRate
+                  orderDirection: desc
+                ) {
+                  id
+                  currentFlowRate
+                  streamedUntilUpdatedAt
+                  updatedAtTimestamp
+                  token {
+                    id
+                    symbol
+                    decimals
+                    name
+                  }
+                  sender {
+                    id
+                  }
+                }
+              }
+            }
+          `,
           variables: {
-            fund: fundAddress.toLowerCase(),
-            token: SUPERFLUID_ADDRESSES.usdcx.toLowerCase()
+            fund: fundAddress.toLowerCase()
           }
         })
-      });
+      })
 
-      const data = await response.json();
-      console.log('Raw GraphQL Response:', JSON.stringify(data, null, 2));
-
-      if (data.data?.streams?.length > 0) {
-        const totalFlowRate = data.data.streams.reduce(
-          (sum: bigint, stream: Stream) => sum + BigInt(stream.currentFlowRate),
-          BigInt(0)
-        );
-
-        const latestTimestamp = Math.max(
-          ...data.data.streams.map((s: Stream) => parseInt(s.updatedAtTimestamp))
-        );
-
-        setStreamData({
-          currentFlowRate: totalFlowRate.toString(),
-          updatedAtTimestamp: latestTimestamp.toString(),
-          token: { symbol: 'USDCx' }
-        });
+      const result = await response.json()
+      
+      if (result.errors) {
+        throw new Error(result.errors[0]?.message || 'GraphQL Error')
       }
+
+      const streams = result.data?.account?.inflows || []
+      console.log('Raw streams data:', JSON.stringify(streams, null, 2))
+
+      const processedStreams = streams.map(processStream)
+      console.log('Processed streams:', processedStreams)
+      
+      setActiveStreams(processedStreams)
+      return processedStreams
+
     } catch (error) {
-      console.error('Error fetching stream data:', error);
+      const message = error instanceof Error ? error.message : 'Failed to fetch stream data'
+      setError(message)
+      console.error('Error fetching stream data:', error)
+      return []
+    } finally {
+      setLoading(false)
     }
-  }, [fundAddress]);
+  }, [fundAddress, processStream])
 
   useEffect(() => {
-    fetchStreamData();
-    const interval = setInterval(fetchStreamData, 5000);
-    return () => clearInterval(interval);
-  }, [fetchStreamData]);
+    fetchActiveStreams()
+    // Update every second for smoother animation
+    const interval = setInterval(fetchActiveStreams, 1000)
+    return () => clearInterval(interval)
+  }, [fetchActiveStreams])
 
-  return streamData;
+  return {
+    activeStreams,
+    loading,
+    error,
+    refetch: fetchActiveStreams
+  }
 }

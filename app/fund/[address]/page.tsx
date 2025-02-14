@@ -4,12 +4,20 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Wallet, LineChart } from 'lucide-react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useStreamData } from '@/app/hooks/useStreamData'
 import ParticleBackground from '@/app/components/ParticleBackground'
 import { useContractRead } from 'wagmi'
 import { formatEther } from 'viem'
 import { FLUID_FUNDS_ABI } from '@/app/config/contracts'
 import FlowingBalance from '@/app/components/FlowingBalance'
+
+// Add interface for stream data
+interface StreamData {
+  currentFlowRate: string
+  updatedAtTimestamp: string
+  // ... other stream properties
+}
 
 interface FundDetails {
   name: string
@@ -34,6 +42,7 @@ const TradingViewChart = () => {
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
     script.async = true
+    script.type = 'text/javascript'
     script.innerHTML = JSON.stringify({
       "width": "100%",
       "height": "600",
@@ -50,11 +59,29 @@ const TradingViewChart = () => {
       "hide_legend": true,
     })
 
-    const container = document.getElementById('trading-chart')
-    if (container) container.appendChild(script)
+    let chartContainer: HTMLElement | null = null
 
+    // Create a reference to use in cleanup
+    const scriptElement = script
+
+    const initChart = () => {
+      chartContainer = document.getElementById('trading-chart')
+      if (chartContainer) {
+        chartContainer.appendChild(scriptElement)
+      }
+    }
+
+    initChart()
+
+    // Cleanup function
     return () => {
-      if (container && script) container.removeChild(script)
+      try {
+        if (chartContainer && scriptElement && scriptElement.parentNode === chartContainer) {
+          chartContainer.removeChild(scriptElement)
+        }
+      } catch (error) {
+        console.warn('TradingView chart cleanup:', error)
+      }
     }
   }, [])
 
@@ -64,9 +91,15 @@ const TradingViewChart = () => {
 }
 
 export default function FundDetailPage() {
+  // Use the useParams hook instead of props
   const params = useParams()
-  const fundAddress = params.address as `0x${string}`
-  const streamData = useStreamData(fundAddress)
+  const fundAddress = (params?.address as string) as `0x${string}`
+  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [streamData, setStreamData] = useState<StreamData>({
+    currentFlowRate: '0',
+    updatedAtTimestamp: (Date.now() / 1000).toString(),
+  })
   const [fundDetails, setFundDetails] = useState<FundDetails | null>(null)
 
   // Get the fund index first
@@ -103,10 +136,14 @@ export default function FundDetailPage() {
     }
   }, [fundData, fundIndex])
 
+  // Use optional chaining and nullish coalescing for safe access
+  const flowRate = streamData?.currentFlowRate ?? '0'
+  const timestamp = streamData?.updatedAtTimestamp ?? (Date.now() / 1000).toString()
+
   return (
     <>
       <ParticleBackground />
-      <div className="min-h-screen pt-24 pb-12">
+      <div className="min-h-screen bg-fluid-bg pt-24 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back Navigation */}
           <motion.div
@@ -115,12 +152,12 @@ export default function FundDetailPage() {
             className="mb-8"
           >
             <Link
-              href="/funds"
+              href="/"
               className="inline-flex items-center gap-2 text-fluid-white-70 hover:text-fluid-white 
                        transition-colors group"
             >
               <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-              <span>Back to Funds</span>
+              <span>Back to Home</span>
             </Link>
           </motion.div>
 
@@ -187,9 +224,16 @@ export default function FundDetailPage() {
                     <p className="text-fluid-white-70 mb-1">Total Investment Flow</p>
                     <FlowingBalance
                       startingBalance={BigInt(0)}
-                      startingBalanceDate={new Date(Number(streamData.updatedAtTimestamp) * 1000)}
-                      flowRate={BigInt(streamData.currentFlowRate)}
+                      startingBalanceDate={new Date(Number(timestamp) * 1000)}
+                      flowRate={BigInt(flowRate)}
                       className="text-2xl font-bold text-fluid-primary"
+                      formatValue={(value) => {
+                        const formatted = Number(value) / (10 ** 18) // Using 18 decimals for USDC
+                        return formatted.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 4
+                        }) + ' USDC'
+                      }}
                     />
                   </div>
                   <div>

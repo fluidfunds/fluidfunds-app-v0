@@ -3,9 +3,9 @@ import { usePublicClient, useWalletClient } from 'wagmi'
 import { SUPERFLUID_ADDRESSES } from '@/app/config/contracts'
 import { type PublicClient, formatEther } from 'viem'
 
-// Add Superfluid subgraph URL
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const SUPERFLUID_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia'
+// Update the SUPERFLUID_SUBGRAPH_URL constant
+
+// Remove the unused constant
 const CFAv1ForwarderAddress = '0xcfA132E353cB4E398080B9700609bb008eceB125'
 
 const CFAv1ForwarderABI = [
@@ -66,6 +66,20 @@ interface StreamData {
   updatedAtTimestamp: string
 }
 
+// Add this interface near your other interfaces
+interface IncomingFlow {
+  sender: {
+    id: string
+  }
+  currentFlowRate: string
+  token: {
+    id: string
+    symbol: string
+  }
+  streamedUntilUpdatedAt: string
+  updatedAtTimestamp: string
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface GraphQLResponse {
   data?: {
@@ -87,7 +101,7 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
   const { data: walletClient } = useWalletClient()
   const client = usePublicClient()
   const publicClient = client as PublicClient
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const [activeStreams, setActiveStreams] = useState<Stream[]>([])
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(false)
@@ -127,27 +141,25 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
 
     try {
       const query = `
-        query($fund: String!) {
-          streams(
-            where: {
-              receiver: $fund,
-              currentFlowRate_gt: "0"
+        query FlowingStreams($fund: String!) {
+          account(id: $fund) {
+            inflows {
+              currentFlowRate
+              token {
+                id
+                symbol
+              }
+              sender {
+                id
+              }
+              streamedUntilUpdatedAt
+              updatedAtTimestamp
             }
-          ) {
-            sender { id }
-            receiver { id }
-            currentFlowRate
-            token {
-              id
-              symbol
-            }
-            streamedUntilUpdatedAt
-            updatedAtTimestamp
           }
         }
       `
 
-      const response = await fetch('/api/subgraph', {
+      const response = await fetch('/api/superfluid', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,10 +180,21 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
       
       if (data.errors) {
         console.error('GraphQL Errors:', data.errors)
-        return
+        return []
       }
 
-      return data.data.streams
+      // Map inflows to our StreamData format
+      const streams = data.data?.account?.inflows?.map((flow: IncomingFlow) => ({
+        sender: flow.sender,
+        receiver: { id: fundAddress.toLowerCase() },
+        currentFlowRate: flow.currentFlowRate,
+        token: flow.token,
+        streamedUntilUpdatedAt: flow.streamedUntilUpdatedAt,
+        updatedAtTimestamp: flow.updatedAtTimestamp
+      })) || []
+
+      setActiveStreams(streams)
+      return streams
     } catch (error) {
       console.error('Error fetching stream data:', error)
       return []
