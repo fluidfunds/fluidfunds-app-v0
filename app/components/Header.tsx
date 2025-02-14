@@ -3,6 +3,13 @@ import Link from "next/link";
 import MobileMenu from "./MobileMenu";
 import { Logo } from "./icons/Logo";
 
+const navigation = [
+  { name: 'Funds', href: '#funds' },
+  { name: 'Benefits', href: '#benefits' },
+  { name: 'Leaderboard', href: '/leaderboard' }, // Changed to page route
+  { name: 'FAQ', href: '#faq' }
+]
+
 const Header = () => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -26,12 +33,6 @@ const Header = () => {
 
           <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
             <button 
-              onClick={() => scrollToSection('features')}
-              className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-            >
-              Features
-            </button>
-            <button 
               onClick={() => scrollToSection('funds')}
               className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
             >
@@ -43,12 +44,12 @@ const Header = () => {
             >
               Benefits
             </button>
-            <button 
-              onClick={() => scrollToSection('community')}
+            <Link 
+              href="/leaderboard"
               className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
             >
-              Community
-            </button>
+              Leaderboard
+            </Link>
             <button 
               onClick={() => scrollToSection('faq')}
               className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
@@ -74,4 +75,4 @@ const Header = () => {
   );
 }
 
-export default Header; 
+export default Header;

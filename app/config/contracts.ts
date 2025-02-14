@@ -164,4 +164,6 @@ export const SUPERFLUID_ADDRESSES = {
   usdcx: '0x1650581F573eAd727B92073B5Ef8B4f5B94D1648'
 } as const
 
+export const SUPERFLUID_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia'
+
 export const CFA_FORWARDER_ADDRESS = '0xcfA132E353cB4E398080B9700609bb008eceB125'

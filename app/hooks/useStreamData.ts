@@ -1,66 +1,84 @@
-import { useEffect, useState } from 'react';
-import { createPublicClient, http, parseAbi } from 'viem';
-import { baseSepolia } from 'viem/chains';
-import { CFA_FORWARDER_ADDRESS, SUPERFLUID_ADDRESSES } from '@/app/config/contracts';
+import { useCallback, useEffect, useState } from 'react'
+import { SUPERFLUID_SUBGRAPH_URL, SUPERFLUID_ADDRESSES } from '../config/contracts'
 
-// Simplified ABI based on streme implementation
-const cfaV1ForwarderAbi = parseAbi([
-  'function getFlowInfo(address token, address sender, address receiver) external view returns' +
-  '(uint256 lastUpdated, int96 flowRate, uint256 deposit, uint256 owedDeposit)'
-]);
-
-const client = createPublicClient({
-  chain: baseSepolia,
-  transport: http()
-});
-
-interface StreamInfo {
-  flowRate: bigint;
-  timestamp: number;
-  isActive: boolean;
+interface StreamData {
+  currentFlowRate: string;
+  updatedAtTimestamp: string;
+  token: {
+    symbol: string;
+  };
 }
 
-export function useStreamData(sender?: `0x${string}`, receiver?: `0x${string}`) {
-  const [streamInfo, setStreamInfo] = useState<StreamInfo>({
-    flowRate: BigInt(0),
-    timestamp: 0,
-    isActive: false
+export function useStreamData(fundAddress: `0x${string}`) {
+  const [streamData, setStreamData] = useState<StreamData>({
+    currentFlowRate: '0',
+    token: { symbol: 'USDCx' }, // Changed from FUDCx to USDCx
+    updatedAtTimestamp: (Date.now() / 1000).toString()
   });
 
-  useEffect(() => {
-    if (!sender || !receiver) return;
+  const fetchStreamData = useCallback(async () => {
+    try {
+      const query = `
+        query($fund: ID!, $token: ID!) {
+          streams(
+            where: {
+              receiver: $fund,
+              token: $token,
+              currentFlowRate_gt: "0"
+            }
+          ) {
+            currentFlowRate
+            streamedUntilUpdatedAt
+            updatedAtTimestamp
+            token {
+              id
+              symbol
+            }
+          }
+        }
+      `;
 
-    const fetchStreamInfo = async () => {
-      try {
-        const flowInfo = await client.readContract({
-          address: CFA_FORWARDER_ADDRESS,
-          abi: cfaV1ForwarderAbi,
-          functionName: 'getFlowInfo',
-          args: [SUPERFLUID_ADDRESSES.usdcx, sender, receiver]
-        });
+      const response = await fetch(SUPERFLUID_SUBGRAPH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          variables: {
+            fund: fundAddress.toLowerCase(),
+            token: SUPERFLUID_ADDRESSES.usdcx.toLowerCase()
+          }
+        })
+      });
 
-        const [lastUpdated, flowRate] = flowInfo;
-        
-        setStreamInfo({
-          flowRate: BigInt(flowRate),
-          timestamp: Number(lastUpdated),
-          isActive: BigInt(flowRate) > BigInt(0)
-        });
-      } catch (error) {
-        console.error('Error fetching stream info:', error);
-        setStreamInfo({
-          flowRate: BigInt(0),
-          timestamp: Date.now(),
-          isActive: false
+      const data = await response.json();
+      console.log('Raw GraphQL Response:', JSON.stringify(data, null, 2));
+
+      if (data.data?.streams?.length > 0) {
+        const totalFlowRate = data.data.streams.reduce(
+          (sum: bigint, stream: any) => sum + BigInt(stream.currentFlowRate),
+          BigInt(0)
+        );
+
+        const latestTimestamp = Math.max(
+          ...data.data.streams.map((s: any) => parseInt(s.updatedAtTimestamp))
+        );
+
+        setStreamData({
+          currentFlowRate: totalFlowRate.toString(),
+          updatedAtTimestamp: latestTimestamp.toString(),
+          token: { symbol: 'USDCx' }
         });
       }
-    };
+    } catch (error) {
+      console.error('Error fetching stream data:', error);
+    }
+  }, [fundAddress]);
 
-    fetchStreamInfo();
-    const interval = setInterval(fetchStreamInfo, 5000);
-
+  useEffect(() => {
+    fetchStreamData();
+    const interval = setInterval(fetchStreamData, 5000);
     return () => clearInterval(interval);
-  }, [sender, receiver]);
+  }, [fetchStreamData]);
 
-  return streamInfo;
+  return streamData;
 }

@@ -21,9 +21,6 @@ const CFAv1ForwarderABI = [
   }
 ] as const
 
-// Add Superfluid subgraph URL
-const SUPERFLUID_SUBGRAPH_URL = 'https://api.studio.thegraph.com/query/41648/superfluid-base-sepolia/version/latest'
-
 // Add USDCx ABI for balance checking
 const USDCxABI = [
   {
@@ -78,7 +75,8 @@ interface Stream {
   monthlyFlow?: number
 }
 
-export function useSuperfluid() {
+// Update the hook definition to accept fundAddress
+export function useSuperfluid(fundAddress?: `0x${string}`) {
   const { data: walletClient } = useWalletClient()
   const client = usePublicClient()
   const publicClient = client as PublicClient
@@ -114,24 +112,23 @@ export function useSuperfluid() {
     }
   }, [walletClient?.account, publicClient])
 
-  // Update streams fetching to include more details
+  // Update fetchActiveStreams to only run if fundAddress is provided
   const fetchActiveStreams = useCallback(async () => {
-    if (!walletClient?.account) return
-
+    if (!fundAddress) return
+    
     setLoading(true)
     try {
-      const senderAddress = walletClient.account.address.toLowerCase()
-      console.log('Fetching streams for sender:', senderAddress)
-      console.log('USDCx token address:', SUPERFLUID_ADDRESSES.usdcx.toLowerCase())
-      
       const query = `
-        query($account: ID!) {
+        query($fund: ID!) {
           streams(
             where: {
-              sender: $account,
+              receiver: $fund,
               currentFlowRate_gt: "0"
             }
           ) {
+            sender {
+              id
+            }
             receiver {
               id
             }
@@ -146,11 +143,6 @@ export function useSuperfluid() {
         }
       `
 
-      console.log('Sending query:', query)
-      console.log('With variables:', {
-        account: senderAddress
-      })
-
       const response = await fetch(
         SUPERFLUID_SUBGRAPH_URL,
         {
@@ -159,7 +151,7 @@ export function useSuperfluid() {
           body: JSON.stringify({
             query,
             variables: {
-              account: senderAddress
+              fund: fundAddress.toLowerCase()
             }
           })
         }
@@ -170,11 +162,11 @@ export function useSuperfluid() {
       }
 
       const data = (await response.json()) as GraphQLResponse
-      console.log('Raw streams data:', data)
       
       if (data.data?.streams) {
         const streams = data.data.streams.map((stream: StreamData) => {
           const mappedStream = {
+            sender: stream.sender.id,
             receiver: stream.receiver.id,
             flowRate: stream.currentFlowRate,
             token: stream.token.id,
@@ -182,22 +174,19 @@ export function useSuperfluid() {
             updatedAtTimestamp: stream.updatedAtTimestamp,
             monthlyFlow: Number(formatEther(BigInt(stream.currentFlowRate))) * 2592000
           }
-          console.log('Mapped stream:', mappedStream)
           return mappedStream
         })
-        console.log('Setting active streams:', streams)
         setActiveStreams(streams)
       } else {
-        console.log('No streams found in response')
         setActiveStreams([])
       }
     } catch (error) {
-      console.error('Error fetching active streams:', error)
+      console.error('Error fetching fund streams:', error)
       setActiveStreams([])
     } finally {
       setLoading(false)
     }
-  }, [walletClient?.account])
+  }, [fundAddress])
 
   const createStream = useCallback(async (
     receiverAddress: `0x${string}`,
@@ -284,9 +273,9 @@ export function useSuperfluid() {
     }
   }, [publicClient, walletClient, fetchActiveStreams])
 
-  // Update polling interval to be more frequent
+  // Update the polling effect to check for fundAddress
   useEffect(() => {
-    if (walletClient?.account) {
+    if (walletClient?.account && fundAddress) {
       // Initial fetch
       fetchUSDCxBalance()
       fetchActiveStreams()
@@ -299,7 +288,7 @@ export function useSuperfluid() {
 
       return () => clearInterval(interval)
     }
-  }, [walletClient?.account, fetchUSDCxBalance, fetchActiveStreams])
+  }, [walletClient?.account, fundAddress, fetchUSDCxBalance, fetchActiveStreams])
 
   return {
     createStream,
@@ -310,4 +299,4 @@ export function useSuperfluid() {
     usdcxBalance,
     fetchUSDCxBalance
   }
-} 
+}

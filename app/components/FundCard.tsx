@@ -29,14 +29,13 @@ interface FundCardProps {
 }
 
 const FundCard = ({ fund }: FundCardProps) => {
+  const { createStream, activeStreams, loading } = useSuperfluid(fund.address)
   const [streamAmount, setStreamAmount] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const { createStream } = useSuperfluid()
-  const { address: userAddress } = useAccount();
-  const streamData = useStreamData(
-    userAddress as `0x${string}`, 
-    fund.address
-  );
+  const { address: userAddress } = useAccount()
+  
+  // Only pass fund address
+  const streamData = useStreamData(fund.address)
 
   // Format the subscription end time
   const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString()
@@ -134,54 +133,66 @@ const FundCard = ({ fund }: FundCardProps) => {
           </div>
         </div>
 
-        {/* Current Investment Status */}
-        {streamData.isActive && (
-          <div className="mb-6 bg-fluid-primary/10 rounded-2xl p-4">
-            <div className="text-fluid-primary font-medium mb-2">Your Current Investment</div>
+        {/* Current Investment Status - Always show if there are active streams */}
+        <div className="mb-6 bg-fluid-primary/10 rounded-2xl p-4">
+          <div className="text-fluid-primary font-medium mb-2">Total Fund Investment Flow</div>
+          {streamData.currentFlowRate ? (
             <FlowingBalance
               startingBalance={BigInt(0)}
-              startingBalanceDate={new Date(streamData.timestamp * 1000)}
-              flowRate={streamData.flowRate}
+              startingBalanceDate={new Date(streamData.updatedAtTimestamp * 1000)}
+              flowRate={BigInt(streamData.currentFlowRate)}
               className="text-2xl font-bold text-fluid-primary"
             />
+          ) : (
+            <div className="text-xl font-bold text-white/60">No active investments</div>
+          )}
+        </div>
+
+        {/* Investment Form - Only show when wallet is connected */}
+        {userAddress ? (
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <DollarSign className="w-5 h-5 text-white/40" />
+              </div>
+              <input
+                type="number"
+                placeholder="Monthly Investment Amount"
+                value={streamAmount}
+                onChange={(e) => setStreamAmount(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/[0.05] border border-white/[0.08]
+                         text-white placeholder-white/40 focus:border-fluid-primary focus:ring-1 focus:ring-fluid-primary
+                         transition-all duration-200"
+              />
+            </div>
+
+            <button
+              onClick={handleCreateStream}
+              disabled={isStreaming}
+              className="w-full py-4 rounded-xl bg-fluid-primary text-white font-bold text-lg
+                       hover:bg-fluid-primary/90 transition-colors disabled:opacity-50
+                       shadow-lg shadow-fluid-primary/20"
+            >
+              {isStreaming ? 'Setting up your investment...' : 'Start Investing Now'}
+            </button>
+
+            <Link
+              href={`/fund/${fund.address}`}
+              className="block w-full text-center py-3 text-white/70 hover:text-fluid-primary
+                       font-medium transition-colors"
+            >
+              View Detailed Performance →
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-white/[0.03] rounded-xl p-6 text-center">
+            <h4 className="text-white font-medium mb-3">Ready to Invest?</h4>
+            <p className="text-white/60 text-sm mb-4">
+              Connect your wallet to start investing in this fund
+            </p>
+            <w3m-button />
           </div>
         )}
-
-        {/* Investment Form */}
-        <div className="space-y-4">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-              <DollarSign className="w-5 h-5 text-white/40" />
-            </div>
-            <input
-              type="number"
-              placeholder="Monthly Investment Amount"
-              value={streamAmount}
-              onChange={(e) => setStreamAmount(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/[0.05] border border-white/[0.08]
-                       text-white placeholder-white/40 focus:border-fluid-primary focus:ring-1 focus:ring-fluid-primary
-                       transition-all duration-200"
-            />
-          </div>
-
-          <button
-            onClick={handleCreateStream}
-            disabled={isStreaming}
-            className="w-full py-4 rounded-xl bg-fluid-primary text-white font-bold text-lg
-                     hover:bg-fluid-primary/90 transition-colors disabled:opacity-50
-                     shadow-lg shadow-fluid-primary/20"
-          >
-            {isStreaming ? 'Setting up your investment...' : 'Start Investing Now'}
-          </button>
-
-          <Link
-            href={`/fund/${fund.address}`}
-            className="block w-full text-center py-3 text-white/70 hover:text-fluid-primary
-                     font-medium transition-colors"
-          >
-            View Detailed Performance →
-          </Link>
-        </div>
 
         {/* Subscription Timer */}
         {isSubscriptionOpen && (
