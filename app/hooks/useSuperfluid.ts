@@ -147,15 +147,11 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
         }
       `
 
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Origin': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      }
-
-      const response = await fetch(process.env.NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL!, {
+      const response = await fetch('/api/subgraph', {
         method: 'POST',
-        headers,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           query,
           variables: {
@@ -177,7 +173,7 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
 
       return data.data.streams
     } catch (error) {
-      console.error('Error fetching fund streams:', error)
+      console.error('Error fetching stream data:', error)
       return []
     }
   }, [fundAddress])
