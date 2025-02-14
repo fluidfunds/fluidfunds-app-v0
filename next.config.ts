@@ -54,6 +54,14 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/subgraph/:path*',
+        destination: 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia/:path*'
+      }
+    ]
+  }
 }
 
 export default nextConfig
