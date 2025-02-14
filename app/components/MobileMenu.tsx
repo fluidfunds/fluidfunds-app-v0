@@ -7,10 +7,9 @@ const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false)
 
   const menuItems = [
-    { id: 'features', label: 'Features' },
     { id: 'funds', label: 'Funds' },
     { id: 'benefits', label: 'Benefits' },
-    { id: 'community', label: 'Community' },
+    { id: 'leaderboard', label: 'leaderboard' },
     { id: 'faq', label: 'FAQ' },
   ]
 
