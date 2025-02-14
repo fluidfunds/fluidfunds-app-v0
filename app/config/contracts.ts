@@ -1,15 +1,19 @@
-export const FLUID_FUNDS_ADDRESS = '0x436b0da27ca80da91f661ff591a9381ea7056567'
+export const FLUID_FUNDS_ADDRESS = '0x65a20115346c3b39CF455c56B8c433fD31A592D4'
 
 export const FLUID_FUNDS_ABI = [
   {
     inputs: [
-      { internalType: 'address', name: '_host', type: 'address' },
-      { internalType: 'address', name: '_cfa', type: 'address' },
-      { internalType: 'address', name: '_usdcx', type: 'address' }
+      { internalType: "contract ISuperToken", name: "_acceptedToken", type: "address" }
     ],
-    stateMutability: 'nonpayable',
-    type: 'constructor'
+    stateMutability: "nonpayable",
+    type: "constructor"
   },
+  { inputs: [], name: "ArrayLengthMismatch", type: "error" },
+  { inputs: [], name: "FundDurationTooShort", type: "error" },
+  { inputs: [], name: "InvalidAcceptedToken", type: "error" },
+  { inputs: [], name: "InvalidSubscriptionEndTime", type: "error" },
+  { inputs: [], name: "InvalidToken", type: "error" },
+  { inputs: [], name: "ProfitSharingPercentageTooHigh", type: "error" },
   {
     anonymous: false,
     inputs: [
@@ -36,136 +40,120 @@ export const FLUID_FUNDS_ABI = [
     type: "event"
   },
   {
-    inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
-    name: 'allFunds',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      { internalType: 'address[]', name: 'tokens', type: 'address[]' },
-      { internalType: 'bool[]', name: 'statuses', type: 'bool[]' }
-    ],
-    name: 'batchSetTokenWhitelisted',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'cfa',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
+    anonymous: false,
     inputs: [
       {
-        internalType: 'string',
-        name: 'name',
-        type: 'string'
+        indexed: true,
+        internalType: "address",
+        name: "previousOwner",
+        type: "address"
       },
       {
-        internalType: 'uint256',
-        name: 'profitSharingPercentage',
-        type: 'uint256'
-      },
-      {
-        internalType: 'uint256',
-        name: 'subscriptionEndTime',
-        type: 'uint256'
-      },
-      {
-        internalType: 'uint256',
-        name: 'minInvestmentAmount',
-        type: 'uint256'
+        indexed: true,
+        internalType: "address",
+        name: "newOwner",
+        type: "address"
       }
     ],
-    name: 'createFund',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'nonpayable',
-    type: 'function'
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "token",
+        type: "address"
+      },
+      {
+        indexed: false,
+        internalType: "bool",
+        name: "status",
+        type: "bool"
+      }
+    ],
+    name: "TokenWhitelisted",
+    type: "event"
   },
   {
     inputs: [],
-    name: 'host',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function'
+    name: "acceptedToken",
+    outputs: [{ internalType: "contract ISuperToken", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    inputs: [],
-    name: 'owner',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function'
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "allFunds",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function"
   },
   {
     inputs: [
-      { internalType: 'address', name: 'token', type: 'address' },
-      { internalType: 'bool', name: 'status', type: 'bool' }
+      { internalType: "string", name: "name", type: "string" },
+      { internalType: "uint256", name: "profitSharingPercentage", type: "uint256" },
+      { internalType: "uint256", name: "subscriptionEndTime", type: "uint256" },
+      { internalType: "uint256", name: "fundDuration", type: "uint256" }
     ],
-    name: 'setTokenWhitelisted',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
+    name: "createFund",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    inputs: [],
-    name: 'usdcx',
-    outputs: [{ internalType: 'address', name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
     name: "isFund",
-    inputs: [{ type: "address", name: "" }],
-    outputs: [{ type: "bool", name: "" }],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function"
   },
   {
+    inputs: [{ internalType: "address", name: "token", type: "address" }],
     name: "isTokenWhitelisted",
-    inputs: [{ type: "address", name: "token" }],
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    name: "whitelistedTokens",
-    inputs: [{ type: "address", name: "" }],
-    outputs: [{ type: "bool", name: "" }],
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "view",
     type: "function"
   },
   {
     inputs: [],
-    name: 'getWhitelistedTokens',
-    outputs: [{ type: 'address[]', name: '' }],
-    stateMutability: 'view',
-    type: 'function'
+    name: "owner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function"
   },
   {
-    inputs: [{ internalType: 'address', name: 'fund', type: 'address' }],
-    name: 'getFundMetadataUri',
-    outputs: [{ internalType: 'string', name: '', type: 'string' }],
-    stateMutability: 'view',
-    type: 'function'
+    inputs: [],
+    name: "renounceOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    "inputs": [],
-    "name": "getFundsCount",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
+    inputs: [
+      { internalType: "address", name: "token", type: "address" },
+      { internalType: "bool", name: "status", type: "bool" }
+    ],
+    name: "setTokenWhitelisted",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
   },
   {
-    "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "name": "funds",
-    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-    "stateMutability": "view",
-    "type": "function"
+    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "whitelistedTokens",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function"
   }
 ] as const
 
@@ -176,4 +164,4 @@ export const SUPERFLUID_ADDRESSES = {
   usdcx: '0x1650581F573eAd727B92073B5Ef8B4f5B94D1648'
 } as const
 
-export const CFA_FORWARDER_ADDRESS = '0xcfA132E353cB4E398080B9700609bb008eceB125' 
+export const CFA_FORWARDER_ADDRESS = '0xcfA132E353cB4E398080B9700609bb008eceB125'

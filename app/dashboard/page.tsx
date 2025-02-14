@@ -226,7 +226,7 @@ export default function DashboardPage() {
     initMetadata()
   }, [])
 
-  // Load funds only after metadata is initialized
+  // Update the fetchManagerFunds function inside useEffect
   useEffect(() => {
     const fetchManagerFunds = async () => {
       if (!walletAddress || !metadataInitialized) {
@@ -243,92 +243,87 @@ export default function DashboardPage() {
       console.log('Fetching funds for manager:', walletAddress)
 
       try {
+        // Create public client with single RPC endpoint and fallback logic
+        const alchemyUrl = `https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+        
         const publicClient = createPublicClient({
           chain: baseSepolia,
-          transport: http(`https://base-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+          transport: http(alchemyUrl)
         })
 
-        // Get fund creation events
-        const fundCreationEvents = await publicClient.getLogs({
-          address: FLUID_FUNDS_ADDRESS,
-          event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
-          args: {
-            manager: walletAddress as `0x${string}`
-          },
-          fromBlock: 0n,
-          toBlock: 'latest'
-        })
+        let fundCreationEvents;
+        try {
+          fundCreationEvents = await publicClient.getLogs({
+            address: FLUID_FUNDS_ADDRESS,
+            event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
+            args: {
+              manager: walletAddress as `0x${string}`
+            },
+            fromBlock: 0n,
+            toBlock: 'latest'
+          })
+        } catch (error) {
+          console.error('Error fetching logs from Alchemy, trying Base RPC...', error)
+          
+          // Try Base Sepolia RPC
+          const baseClient = createPublicClient({
+            chain: baseSepolia,
+            transport: http('https://sepolia.base.org')
+          })
 
-        console.log('Found fund creation events:', {
-          events: fundCreationEvents,
-          count: fundCreationEvents.length
-        })
+          fundCreationEvents = await baseClient.getLogs({
+            address: FLUID_FUNDS_ADDRESS,
+            event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
+            args: {
+              manager: walletAddress as `0x${string}`
+            },
+            fromBlock: 0n,
+            toBlock: 'latest'
+          })
+        }
+
+        console.log('Found fund creation events:', fundCreationEvents.length)
 
         // Process each fund
         const managerFundsData = await Promise.all(
           fundCreationEvents.map(async (event) => {
-            if (!event.args) {
-              console.log('No args in event:', event)
-              return null
-            }
+            if (!event.args) return null
 
-            const fundAddress = event.args.fundAddress as string
+            const fundAddress = event.args.fundAddress as `0x${string}`
             const fundName = event.args.name as string
-
-            console.log('Processing fund:', {
-              address: fundAddress,
-              name: fundName,
-              event
-            })
-
-            // Get metadata from storage
-            const storedMetadata = getFundMetadataFromStorage(fundAddress)
-            console.log('Stored metadata for fund:', {
-              fundAddress,
-              metadata: storedMetadata
-            })
-
-            if (!storedMetadata?.uri) {
-              console.log('No metadata URI found for fund:', fundAddress)
-              return null
-            }
+            const manager = event.args.manager as `0x${string}`
 
             try {
-              const ipfsMetadata = await getFundMetadata(storedMetadata.uri)
-              console.log('IPFS metadata for fund:', {
-                fundAddress,
-                metadata: ipfsMetadata
-              })
-              
-              return {
+              // Create basic fund info object
+              const fundInfo: FundInfo = {
                 address: fundAddress,
                 verified: true,
                 name: fundName,
-                manager: walletAddress,
-                description: ipfsMetadata.description || 'Fund details coming soon...',
-                image: ipfsMetadata.image ? getIPFSUrl(ipfsMetadata.image) : undefined,
-                strategy: ipfsMetadata.strategy || '',
-                socialLinks: ipfsMetadata.socialLinks || {},
-                performanceMetrics: ipfsMetadata.performanceMetrics || {
+                manager: manager,
+                description: 'Loading fund details...',
+                image: undefined,
+                strategy: '',
+                socialLinks: {},
+                performanceMetrics: {
                   tvl: '0',
                   returns: '0',
                   investors: 0
                 },
-                updatedAt: ipfsMetadata.updatedAt || Date.now(),
-                metadataUri: storedMetadata.uri
+                updatedAt: Date.now(),
+                metadataUri: ''
               }
+
+              return fundInfo
             } catch (error) {
-              console.error(`Failed to fetch metadata for fund ${fundAddress}:`, error)
+              console.error(`Failed to process fund ${fundAddress}:`, error)
               return null
             }
           })
         )
 
-        const validFunds = processManagerFundsData(managerFundsData)
-        console.log('Processed funds:', {
-          total: validFunds.length,
-          funds: validFunds
-        })
+        const validFunds = managerFundsData.filter((fund): fund is NonNullable<typeof fund> => fund !== null)
+        console.log('Processed funds:', validFunds.length)
+        
         setFunds(validFunds)
 
       } catch (error) {
@@ -343,8 +338,6 @@ export default function DashboardPage() {
       fetchManagerFunds()
     }
   }, [walletAddress, metadataInitialized])
-
-
 
   // Update the ownership check effect
   useEffect(() => {
