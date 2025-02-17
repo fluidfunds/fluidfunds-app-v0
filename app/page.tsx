@@ -451,10 +451,10 @@ export default function Home() {
             <div className="max-w-[1200px] mx-auto px-4">
               <div className="text-center mb-16">
                 <h2 className="text-[40px] font-medium mb-4 bg-gradient-to-r from-fluid-primary to-purple-500 bg-clip-text text-transparent">
-                  Stream USDC to Your Favorite Fund
+                  Smart Investing Made Simple
                 </h2>
                 <p className="text-xl text-white/70 max-w-2xl mx-auto">
-                  Discover and invest in verified hedge funds managed by experienced professionals
+                  Get professional-grade returns with automated investment strategies. Start with as little as 100 USDC.
                 </p>
               </div>
 
