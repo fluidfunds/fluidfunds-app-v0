@@ -2,24 +2,42 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 const MobileMenu = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
 
   const menuItems = [
-    { id: 'funds', label: 'Funds' },
-    { id: 'benefits', label: 'Benefits' },
-    { id: 'leaderboard', label: 'leaderboard' },
-    { id: 'faq', label: 'FAQ' },
+    { id: 'funds', label: 'Funds', type: 'scroll' },
+    { id: 'benefits', label: 'Benefits', type: 'scroll' },
+    { id: 'leaderboard', label: 'Leaderboard', type: 'link', href: '/leaderboard' },
+    { id: 'faq', label: 'FAQ', type: 'scroll' },
   ]
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setIsOpen(false);
+  const handleItemClick = (item: typeof menuItems[0]) => {
+    setIsOpen(false)
+    
+    if (item.type === 'link') {
+      router.push(item.href!)
+      return
     }
-  };
+
+    // Scroll behavior for other items
+    setTimeout(() => {
+      const element = document.getElementById(item.id)
+      if (element) {
+        const headerOffset = 80
+        const elementPosition = element.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        })
+      }
+    }, 100)
+  }
 
   return (
     <div className="md:hidden">
@@ -60,7 +78,7 @@ const MobileMenu = () => {
               {menuItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => scrollToSection(item.id)}
+                  onClick={() => handleItemClick(item)}
                   className="px-5 py-4 text-[15px] text-fluid-white-70 transition-all duration-200 
                            hover:bg-fluid-white-6 hover:text-fluid-white text-center"
                 >
@@ -85,4 +103,4 @@ const MobileMenu = () => {
   )
 }
 
-export default MobileMenu 
+export default MobileMenu
