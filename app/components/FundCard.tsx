@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { formatEther } from 'viem'
@@ -34,18 +35,14 @@ interface FundCardProps {
 }
 
 const FundCard = ({ fund }: FundCardProps) => {
-  const { createStream, loading } = useSuperfluid(fund.address)
-  const [streamAmount, setStreamAmount] = useState('')
-  const { address: userAddress } = useAccount()
   const streamData = useStreamData(fund.address)
-  const [showInvestInput, setShowInvestInput] = useState(false)
 
   // Format the subscription end time
   const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString()
   const isSubscriptionOpen = fund.subscriptionEndTime > Date.now() / 1000
 
   // Update formatting function to handle bigint
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const formatInvestmentAmount = (amount: bigint) => {
     try {
       // Convert from wei to ETH (amount is already bigint)
@@ -61,23 +58,6 @@ const FundCard = ({ fund }: FundCardProps) => {
     } catch (error) {
       console.error('Error formatting investment amount:', error)
       return `${amount.toString()} wei`
-    }
-  }
-
-  const handleCreateStream = async () => {
-    if (!streamAmount) {
-      toast.error('Please enter a stream amount')
-      return
-    }
-
-    try {
-      const hash = await createStream(fund.address, streamAmount)
-      console.log('Stream created with hash:', hash)
-      toast.success('Stream created successfully!')
-      setStreamAmount('') // Clear input after success
-    } catch (error) {
-      console.error('Error creating stream:', error)
-      toast.error('Failed to create stream. Please ensure you have enough USDCx balance.')
     }
   }
 
@@ -259,76 +239,6 @@ const FundCard = ({ fund }: FundCardProps) => {
 
         {/* Actions Section */}
         <div className="mt-auto space-y-2">
-          {userAddress && (
-            <>
-              {!showInvestInput ? (
-                <button
-                  onClick={() => setShowInvestInput(true)}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-fluid-primary to-fluid-primary/80 
-                           text-white font-bold hover:from-fluid-primary/90 hover:to-fluid-primary/70 
-                           transition-all duration-300 transform hover:-translate-y-0.5
-                           shadow-lg shadow-fluid-primary/20"
-                >
-                  Start Investing Now
-                </button>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-2"
-                >
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={streamAmount}
-                      onChange={(e) => setStreamAmount(e.target.value)}
-                      placeholder="Enter USDC amount"
-                      className="w-full py-3 px-4 rounded-xl bg-white/[0.03] border border-fluid-primary/30 
-                               text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
-                               transition-colors"
-                      min="0"
-                      step="0.01"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-fluid-primary/60 text-sm">
-                      USDC/month
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowInvestInput(false)}
-                      className="flex-1 py-3 rounded-xl border border-fluid-primary/30 
-                               text-fluid-primary font-medium hover:bg-fluid-primary/10 
-                               transition-all duration-300"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleCreateStream}
-                      disabled={loading || !streamAmount}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-fluid-primary to-fluid-primary/80 
-                               text-white font-bold hover:from-fluid-primary/90 hover:to-fluid-primary/70 
-                               transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
-                               shadow-lg shadow-fluid-primary/20"
-                    >
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                            className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
-                          />
-                          Setting up...
-                        </span>
-                      ) : (
-                        'Confirm'
-                      )}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </>
-          )}
-
           <Link
             href={`/fund/${fund.address}`}
             className="block w-full py-2.5 rounded-xl border border-fluid-primary/30 

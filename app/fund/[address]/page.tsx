@@ -11,6 +11,8 @@ import { useContractRead } from 'wagmi'
 import { formatEther } from 'viem'
 import { FLUID_FUNDS_ABI } from '@/app/config/contracts'
 import FlowingBalance from '@/app/components/FlowingBalance'
+import { useSuperfluid } from '@/app/hooks/useSuperfluid'
+import { toast } from 'sonner'
 
 // Add interface for stream data
 interface StreamData {
@@ -101,6 +103,29 @@ export default function FundDetailPage() {
     updatedAtTimestamp: (Date.now() / 1000).toString(),
   })
   const [fundDetails, setFundDetails] = useState<FundDetails | null>(null)
+  const [streamAmount, setStreamAmount] = useState('')
+  const [isStreaming, setIsStreaming] = useState(false)
+  const { createStream } = useSuperfluid(fundAddress)
+
+  const handleCreateStream = async () => {
+    if (!streamAmount) {
+      toast.error('Please enter a stream amount')
+      return
+    }
+
+    setIsStreaming(true)
+    try {
+      const hash = await createStream(fundAddress, streamAmount)
+      console.log('Stream created with hash:', hash)
+      toast.success('Stream created successfully!')
+      setStreamAmount('')
+    } catch (error) {
+      console.error('Error creating stream:', error)
+      toast.error('Failed to create stream. Please ensure you have enough USDCx balance.')
+    } finally {
+      setIsStreaming(false)
+    }
+  }
 
   // Get the fund index first
   const { data: fundIndex } = useContractRead({
@@ -141,147 +166,203 @@ export default function FundDetailPage() {
   const timestamp = streamData?.updatedAtTimestamp ?? (Date.now() / 1000).toString()
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
       <ParticleBackground />
-      <div className="min-h-screen bg-fluid-bg pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back Navigation */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="mb-8"
+      
+      {/* Hero Section with Key Metrics */}
+      <div className="relative overflow-hidden border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-white/60 hover:text-white 
+                     transition-colors group mb-8"
           >
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-fluid-white-70 hover:text-fluid-white 
-                       transition-colors group"
-            >
-              <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-              <span>Back to Home</span>
-            </Link>
-          </motion.div>
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+            <span>Back to Funds</span>
+          </Link>
 
-          {/* Fund Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
-          >
-            <h1 className="text-4xl font-bold text-fluid-white mb-4">
-              {fundDetails?.name || 'Loading...'}
-            </h1>
-            <div className="flex items-center gap-4 text-fluid-white-70">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4" />
-                <span>Managed by {fundDetails?.manager?.slice(0, 6)}...{fundDetails?.manager?.slice(-4)}</span>
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            {/* Fund Info */}
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-4">
+                {fundDetails?.name || 'Loading...'}
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 text-white/70 mb-6">
+                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full">
+                  <Wallet className="w-4 h-4" />
+                  <span>By {fundDetails?.manager?.slice(0, 6)}...{fundDetails?.manager?.slice(-4)}</span>
+                </div>
+                <div className="flex items-center gap-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full">
+                  <LineChart className="w-4 h-4" />
+                  <span>+24.5% Past Month</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <LineChart className="w-4 h-4" />
-                <span>+24.5% Past Month</span>
+
+              {/* Key Metrics Cards */}
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-white/[0.03] rounded-xl p-4 backdrop-blur-sm border border-white/[0.08]">
+                  <p className="text-white/60 text-sm mb-1">AUM</p>
+                  <p className="text-2xl font-bold text-white">$1.2M</p>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-4 backdrop-blur-sm border border-white/[0.08]">
+                  <p className="text-white/60 text-sm mb-1">Performance Fee</p>
+                  <p className="text-2xl font-bold text-white">{fundDetails?.profitSharingPercentage}%</p>
+                </div>
               </div>
+
+              {/* Investment Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/[0.03] rounded-xl p-6 backdrop-blur-sm border border-white/[0.08]"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold text-white">Start Investing</h3>
+                  <div className="flex items-center gap-2 text-green-400 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span>Open for Investment</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
+                      Monthly Investment Amount
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="streamAmount"
+                        type="number"
+                        value={streamAmount}
+                        onChange={(e) => setStreamAmount(e.target.value)}
+                        placeholder="Enter amount"
+                        className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
+                                text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
+                                transition-colors"
+                        min="0"
+                        step="0.01"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                        USDC/month
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm text-white/40">
+                      Min. investment: {fundDetails ? formatEther(fundDetails.minInvestmentAmount) : '0'} USDC
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={handleCreateStream}
+                    disabled={isStreaming || !streamAmount}
+                    className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
+                            hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
+                            disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isStreaming ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                          className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                        />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      'Invest Now'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             {/* Chart Section */}
-            <div className="lg:col-span-2 space-y-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-fluid-white/[0.02] backdrop-blur-lg rounded-xl border border-fluid-white/[0.03] p-6"
-              >
-                <h2 className="text-xl font-bold text-fluid-white mb-6">Performance Chart</h2>
-                <TradingViewChart />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-fluid-white/[0.02] backdrop-blur-lg rounded-xl border border-fluid-white/[0.03] p-6"
-              >
-                <h2 className="text-xl font-bold text-fluid-white mb-6">Trading Activity</h2>
-                <div className="space-y-4">
-                  {/* Trading activity will be implemented here */}
-                  <div className="text-fluid-white-70 text-center py-8">
-                    Trading activity will be shown here
-                  </div>
+            <div className="bg-white/[0.02] rounded-xl border border-white/[0.08] p-6 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-white">Performance History</h2>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
+                    1M
+                  </button>
+                  <button className="px-3 py-1.5 rounded-full text-sm bg-fluid-primary text-white">
+                    3M
+                  </button>
+                  <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
+                    1Y
+                  </button>
                 </div>
-              </motion.div>
-            </div>
-
-            {/* Stats & Info Section */}
-            <div className="space-y-8">
-              {/* Fund Stats */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-fluid-white/[0.02] backdrop-blur-lg rounded-xl border border-fluid-white/[0.03] p-6"
-              >
-                <h2 className="text-xl font-bold text-fluid-white mb-6">Fund Stats</h2>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-fluid-white-70 mb-1">Total Investment Flow</p>
-                    <FlowingBalance
-                      startingBalance={BigInt(0)}
-                      startingBalanceDate={new Date(Number(timestamp) * 1000)}
-                      flowRate={BigInt(flowRate)}
-                      className="text-2xl font-bold text-fluid-primary"
-                      formatValue={(value) => {
-                        const formatted = Number(value) / (10 ** 18) // Using 18 decimals for USDC
-                        return formatted.toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 4
-                        }) + ' USDC'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-fluid-white-70 mb-1">Performance Fee</p>
-                    <p className="text-2xl font-bold text-fluid-white">
-                      {fundDetails?.profitSharingPercentage}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-fluid-white-70 mb-1">Minimum Investment</p>
-                    <p className="text-2xl font-bold text-fluid-white">
-                      {fundDetails ? formatEther(fundDetails.minInvestmentAmount) : '0'} USDC
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Subscription Status */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-fluid-white/[0.02] backdrop-blur-lg rounded-xl border border-fluid-white/[0.03] p-6"
-              >
-                <h2 className="text-xl font-bold text-fluid-white mb-6">Subscription Status</h2>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-fluid-white-70 mb-1">End Date</p>
-                    <p className="text-xl font-bold text-fluid-white">
-                      {fundDetails 
-                        ? new Date(fundDetails.subscriptionEndTime * 1000).toLocaleDateString() 
-                        : 'Loading...'}
-                    </p>
-                  </div>
-                  {fundDetails && fundDetails.subscriptionEndTime * 1000 > Date.now() && (
-                    <Link
-                      href={`/invest/${fundAddress}`}
-                      className="block w-full py-3 px-4 rounded-xl bg-fluid-primary text-white font-medium 
-                               hover:bg-fluid-primary/90 transition-all duration-200 text-center"
-                    >
-                      Invest Now
-                    </Link>
-                  )}
-                </div>
-              </motion.div>
+              </div>
+              <TradingViewChart />
             </div>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Additional Fund Information */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* Fund Stats */}
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Fund Statistics</h3>
+            <div className="space-y-4">
+              <div className="bg-white/[0.02] rounded-xl p-4 backdrop-blur-sm border border-white/[0.08]">
+                <p className="text-white/60 text-sm mb-1">Total Investment Flow</p>
+                <FlowingBalance
+                  startingBalance={BigInt(0)}
+                  startingBalanceDate={new Date(Number(timestamp) * 1000)}
+                  flowRate={BigInt(flowRate)}
+                  className="text-xl font-bold text-white"
+                  formatValue={(value) => {
+                    const formatted = Number(value) / (10 ** 18)
+                    return formatted.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4
+                    }) + ' USDC'
+                  }}
+                />
+              </div>
+              <div className="bg-white/[0.02] rounded-xl p-4 backdrop-blur-sm border border-white/[0.08]">
+                <p className="text-white/60 text-sm mb-1">Active Investors</p>
+                <p className="text-xl font-bold text-white">127</p>
+              </div>
+              <div className="bg-white/[0.02] rounded-xl p-4 backdrop-blur-sm border border-white/[0.08]">
+                <p className="text-white/60 text-sm mb-1">Investment Window</p>
+                <p className="text-xl font-bold text-white">
+                  {fundDetails 
+                    ? new Date(fundDetails.subscriptionEndTime * 1000).toLocaleDateString() 
+                    : 'Loading...'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trading Activity */}
+          <div className="md:col-span-2">
+            <h3 className="text-lg font-semibold text-white mb-4">Recent Trading Activity</h3>
+            <div className="bg-white/[0.02] rounded-xl backdrop-blur-sm border border-white/[0.08] p-6">
+              <div className="space-y-4">
+                {/* Placeholder for trading activity - Replace with actual data */}
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between py-4 border-b border-white/[0.08]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-fluid-primary/10 flex items-center justify-center">
+                        <LineChart className="w-5 h-5 text-fluid-primary" />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">ETH/USDC Long</p>
+                        <p className="text-sm text-white/60">2 hours ago</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-green-400 font-medium">+2.4%</p>
+                      <p className="text-sm text-white/60">$25,000</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
