@@ -452,7 +452,7 @@ export default function Home() {
               <div className="relative z-10">
                 <div className="text-center mb-8">
                   <h3 className="text-3xl font-medium text-fluid-primary mb-4">
-                    Ready to Start Your Investment Journey?
+                  Create Your Fund
                   </h3>
                   <p className="text-lg text-fluid-white/70 max-w-2xl mx-auto mb-8">
                     Create your own hedge fund in minutes and start managing assets with our 
@@ -464,8 +464,7 @@ export default function Home() {
                       <div className="flex flex-col items-center gap-3">
                         <CustomConnectButton />
                         <span className="text-sm text-fluid-white/50">
-                          Connect your wallet to get started
-                        </span>
+                        Connect your wallet to create your fund                        </span>
                       </div>
                       
                       <div className="flex items-center justify-center gap-6 mt-8">

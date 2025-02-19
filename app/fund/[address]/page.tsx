@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useStreamData } from '@/app/hooks/useStreamData'
 import ParticleBackground from '@/app/components/ParticleBackground'
-import { useContractRead } from 'wagmi'
+import { useContractRead, useAccount } from 'wagmi'
 import { formatEther } from 'viem'
 import { FLUID_FUNDS_ABI } from '@/app/config/contracts'
 import FlowingBalance from '@/app/components/FlowingBalance'
@@ -106,6 +106,7 @@ export default function FundDetailPage() {
   const [streamAmount, setStreamAmount] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const { createStream } = useSuperfluid(fundAddress)
+  const { isConnected } = useAccount()
 
   const handleCreateStream = async () => {
     if (!streamAmount) {
@@ -224,54 +225,67 @@ export default function FundDetailPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
-                      Monthly Investment Amount
-                    </label>
-                    <div className="relative">
-                      <input
-                        id="streamAmount"
-                        type="number"
-                        value={streamAmount}
-                        onChange={(e) => setStreamAmount(e.target.value)}
-                        placeholder="Enter amount"
-                        className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
-                                text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
-                                transition-colors"
-                        min="0"
-                        step="0.01"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
-                        USDC/month
-                      </div>
+                {!isConnected ? (
+                  <div className="text-center py-6">
+                    <div className="mb-4">
+                      <Wallet className="w-12 h-12 text-fluid-primary mx-auto mb-3" />
+                      <h4 className="text-white font-medium mb-2">Connect Your Wallet</h4>
+                      <p className="text-white/60 text-sm mb-4">
+                        Please connect your wallet to start investing in this fund
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm text-white/40">
-                      Min. investment: {fundDetails ? formatEther(fundDetails.minInvestmentAmount) : '0'} USDC
-                    </p>
                   </div>
-
-                  <button
-                    onClick={handleCreateStream}
-                    disabled={isStreaming || !streamAmount}
-                    className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
-                            hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
-                            disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isStreaming ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                          className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                ) : (
+                  <div className="space-y-4">
+                    {/* Existing investment form code */}
+                    <div>
+                      <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
+                        Monthly Investment Amount
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="streamAmount"
+                          type="number"
+                          value={streamAmount}
+                          onChange={(e) => setStreamAmount(e.target.value)}
+                          placeholder="Enter amount"
+                          className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
+                                  text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
+                                  transition-colors"
+                          min="0"
+                          step="0.01"
                         />
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      'Invest Now'
-                    )}
-                  </button>
-                </div>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                          USDC/month
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm text-white/40">
+                        Min. investment: {fundDetails ? formatEther(fundDetails.minInvestmentAmount) : '0'} USDC
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleCreateStream}
+                      disabled={isStreaming || !streamAmount}
+                      className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
+                              hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
+                              disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isStreaming ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                            className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                          />
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        'Invest Now'
+                      )}
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </div>
 
