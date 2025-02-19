@@ -1,73 +1,35 @@
 'use client'
-import Link from "next/link";
-import MobileMenu from "./MobileMenu";
-import { Logo } from "./icons/Logo";
+import { CustomConnectButton } from './CustomConnectButton'
+import Link from 'next/link'
 
-const navigation = [
-  { name: 'Funds', href: '#funds' },
-  { name: 'Benefits', href: '#benefits' },
-  { name: 'Leaderboard', href: '/leaderboard' },
-  { name: 'FAQ', href: '#faq' }
-]
-
-const Header = () => {
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
+export default function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
-      <div className="bg-fluid-bg/90 backdrop-blur-[20px]">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 flex items-center justify-center text-fluid-primary">
-              <Logo className="w-6 h-6" />
-            </div>
-            <span className="text-lg font-medium text-fluid-primary">
-              FluidFunds
-            </span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-fluid-bg/80 backdrop-blur-lg border-b border-fluid-white/10">
+      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <Link href="/" className="text-2xl font-medium text-fluid-primary">
+          FluidFunds
+        </Link>
+        
+        <nav className="hidden md:flex items-center gap-8">
+          <Link href="#features" className="text-fluid-white/70 hover:text-fluid-white transition-colors">
+            Features
           </Link>
+          <Link href="#process" className="text-fluid-white/70 hover:text-fluid-white transition-colors">
+            Process
+          </Link>
+          <Link href="#funds" className="text-fluid-white/70 hover:text-fluid-white transition-colors">
+            Funds
+          </Link>
+          <Link href="#benefits" className="text-fluid-white/70 hover:text-fluid-white transition-colors">
+            Benefits
+          </Link>
+          <Link href="#faq" className="text-fluid-white/70 hover:text-fluid-white transition-colors">
+            FAQ
+          </Link>
+        </nav>
 
-          <nav className="hidden md:flex items-center gap-10 absolute left-1/2 -translate-x-1/2">
-            {navigation.map((item) => (
-              item.href.startsWith('#') ? (
-                <button 
-                  key={item.name}
-                  onClick={() => scrollToSection(item.href.slice(1))}
-                  className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-                >
-                  {item.name}
-                </button>
-              ) : (
-                <Link 
-                  key={item.name}
-                  href={item.href}
-                  className="text-[15px] text-fluid-white-70 hover:text-fluid-white transition-colors duration-200"
-                >
-                  {item.name}
-                </Link>
-              )
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/connect"
-              className="hidden md:inline-flex h-9 items-center justify-center rounded-lg border border-fluid-white-10 
-                       bg-fluid-white-6 px-4 text-[14px] font-medium text-fluid-white 
-                       transition-all duration-200 hover:bg-fluid-white-10"
-            >
-              Connect
-            </Link>
-            <MobileMenu />
-          </div>
-        </div>
+        <CustomConnectButton />
       </div>
     </header>
-  );
+  )
 }
-
-export default Header;

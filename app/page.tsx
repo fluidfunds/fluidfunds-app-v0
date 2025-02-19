@@ -6,8 +6,8 @@ import Benefits from './components/Benefits'
 import ProcessSteps from './components/ProcessSteps'
 import ParticleBackground from '@/app/components/ParticleBackground'
 import HeroCarousel from './components/HeroCarousel'
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { CustomConnectButton } from './components/CustomConnectButton'
 import { 
   createPublicClient, 
   http, 
@@ -24,6 +24,8 @@ import {
 } from '@/app/utils/fundMetadataMap'
 import { isValidAlchemyKey } from '@/app/utils/validation'
 import FundCard from '@/app/components/FundCard'
+import { useAccount } from 'wagmi'
+import { useRouter } from 'next/navigation'
 
 // Update FundInfo interface to include all required properties
 interface FundInfo {
@@ -62,6 +64,14 @@ export default function Home() {
   const [trendingFunds, setTrendingFunds] = useState<FundInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [metadataInitialized, setMetadataInitialized] = useState(false)
+  const { isConnected } = useAccount()
+  const router = useRouter()
+
+  const handleStartFund = () => {
+    if (isConnected) {
+      router.push('/dashboard')
+    }
+  }
 
   // Initialize metadata map
   useEffect(() => {
@@ -419,9 +429,9 @@ export default function Home() {
             <ProcessSteps />
           </div>
 
-          {/* Start a Hedge Fund Button */}
+          {/* Enhanced Call-to-Action Section */}
           <motion.div 
-            className="w-full flex justify-center"
+            className="w-full max-w-4xl mx-auto py-16 px-6"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ 
@@ -430,14 +440,71 @@ export default function Home() {
               delay: 0.2 
             }}
           >
-            <Link
-              href="/connect"
-              className="h-12 px-8 rounded-xl bg-fluid-primary text-fluid-white 
-                       font-medium inline-flex items-center justify-center hover:bg-fluid-primary/90 
-                       transition-colors duration-200"
-            >
-              Start a Hedge Fund
-            </Link>
+            <div className="relative bg-gradient-to-br from-fluid-bg/40 to-fluid-primary/10 
+                            backdrop-blur-lg rounded-2xl p-8 border border-fluid-white/10
+                            overflow-hidden">
+              {/* Background Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-fluid-primary/10 to-purple-500/10 
+                              opacity-30 pointer-events-none" />
+              
+              <div className="relative z-10">
+                <div className="text-center mb-8">
+                  <h3 className="text-3xl font-medium text-fluid-primary mb-4">
+                    Ready to Start Your Investment Journey?
+                  </h3>
+                  <p className="text-lg text-fluid-white/70 max-w-2xl mx-auto mb-8">
+                    Create your own hedge fund in minutes and start managing assets with our 
+                    secure, transparent, and professional-grade platform.
+                  </p>
+                  
+                  {!isConnected ? (
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-3">
+                        <CustomConnectButton />
+                        <span className="text-sm text-fluid-white/50">
+                          Connect your wallet to get started
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-center gap-6 mt-8">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">No Gas Fees</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">Instant Setup</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">Secure Platform</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <button
+                        onClick={handleStartFund}
+                        className="px-8 py-4 bg-fluid-primary rounded-xl font-medium 
+                                hover:bg-fluid-primary/90 transition-all duration-200 
+                                transform hover:scale-105 shadow-lg shadow-fluid-primary/20"
+                      >
+                        Create Your Hedge Fund
+                      </button>
+                      <p className="text-sm text-fluid-white/50">
+                        Already connected with {isConnected ? '✓' : ''} 
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           {/* Unified Funds Section */}
