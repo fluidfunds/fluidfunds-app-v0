@@ -210,9 +210,9 @@ export default function Dashboard() {
   const { data: walletClient } = useWalletClient()
   const publicClient = usePublicClient()
 
-  // Show different features based on role
-  const showManagerFeatures = role === 'manager'
-  const showInvestorFeatures = role === 'investor'
+  // Force manager view for all users
+  const showManagerFeatures = true
+  const showInvestorFeatures = false
 
   // Add a ref to track initialization
   const initializationRef = useRef(false)

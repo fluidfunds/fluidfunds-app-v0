@@ -67,10 +67,12 @@ export default function Home() {
   const { isConnected } = useAccount()
   const router = useRouter()
 
-  const handleStartFund = () => {
-    if (isConnected) {
-      router.push('/dashboard')
-    }
+  // Update handleStartFund function
+  const handleStartFund = async () => {
+    if (!isConnected) return
+    
+    // Simple redirect to dashboard - the dashboard page will handle showing the fund manager view
+    router.push('/dashboard')
   }
 
   // Initialize metadata map
@@ -497,9 +499,6 @@ export default function Home() {
                       >
                         Create Your Hedge Fund
                       </button>
-                      <p className="text-sm text-fluid-white/50">
-                        Already connected with {isConnected ? '✓' : ''} 
-                      </p>
                     </div>
                   )}
                 </div>
