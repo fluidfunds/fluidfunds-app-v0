@@ -15,7 +15,7 @@ import { formatEther, getAddress } from 'viem'
 import { getFundMetadata, getIPFSUrl } from '@/app/services/ipfs'
 import Image from 'next/image'
 import { useRole } from '@/app/hooks/useRole'
-import { useWalletClient, useAccount } from 'wagmi'
+import { useWalletClient, useAccount, usePublicClient, useDisconnect } from 'wagmi'
 import { 
   initializeMetadataMap, 
   type StoredMetadata,
@@ -166,10 +166,28 @@ function FundVerification({ fund }: { fund: string }) {
   )
 }
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const router = useRouter()
-  const { address: walletAddress } = useAccount()
-  const [address, setAddress] = useState<string>('')
+  const { address } = useAccount()
+  const { disconnect } = useDisconnect()
+  
+  // Add disconnect handler
+  const handleDisconnect = async () => {
+    try {
+      await disconnect()
+      router.push('/')
+    } catch (error) {
+      console.error('Error disconnecting:', error)
+    }
+  }
+
+  // Add useEffect to handle disconnect and redirect
+  useEffect(() => {
+    if (!address) {
+      router.push('/')
+    }
+  }, [address, router])
+
   const [loading, setLoading] = useState(true)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isStreamModalOpen, setIsStreamModalOpen] = useState(false)
@@ -190,6 +208,7 @@ export default function DashboardPage() {
   } = useSuperfluid()
   const role = useRole()
   const { data: walletClient } = useWalletClient()
+  const publicClient = usePublicClient()
 
   // Show different features based on role
   const showManagerFeatures = role === 'manager'
@@ -229,9 +248,9 @@ export default function DashboardPage() {
   // Update the fetchManagerFunds function inside useEffect
   useEffect(() => {
     const fetchManagerFunds = async () => {
-      if (!walletAddress || !metadataInitialized) {
+      if (!address || !metadataInitialized) {
         console.log('Skipping fund fetch - no wallet or metadata not initialized', {
-          walletAddress,
+          address,
           metadataInitialized
         })
         setFunds([])
@@ -240,7 +259,7 @@ export default function DashboardPage() {
       }
 
       setLoading(true)
-      console.log('Fetching funds for manager:', walletAddress)
+      console.log('Fetching funds for manager:', address)
 
       try {
         // Create public client with single RPC endpoint and fallback logic
@@ -257,7 +276,7 @@ export default function DashboardPage() {
             address: FLUID_FUNDS_ADDRESS,
             event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
             args: {
-              manager: walletAddress as `0x${string}`
+              manager: address as `0x${string}`
             },
             fromBlock: 0n,
             toBlock: 'latest'
@@ -275,7 +294,7 @@ export default function DashboardPage() {
             address: FLUID_FUNDS_ADDRESS,
             event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
             args: {
-              manager: walletAddress as `0x${string}`
+              manager: address as `0x${string}`
             },
             fromBlock: 0n,
             toBlock: 'latest'
@@ -337,14 +356,14 @@ export default function DashboardPage() {
     if (metadataInitialized) {
       fetchManagerFunds()
     }
-  }, [walletAddress, metadataInitialized])
+  }, [address, metadataInitialized])
 
   // Update the ownership check effect
   useEffect(() => {
     const checkOwnership = async () => {
-      if (isOwner && walletAddress) {
+      if (isOwner && address) {
         try {
-          const result = await isOwner(walletAddress)
+          const result = await isOwner(address)
           setIsUserOwner(result)
         } catch (error) {
           console.error('Error checking ownership:', error)
@@ -354,7 +373,7 @@ export default function DashboardPage() {
     }
     
     checkOwnership()
-  }, [isOwner, walletAddress])
+  }, [isOwner, address])
 
   // Add a new function to fetch all funds
   const fetchAllFunds = async () => {
@@ -412,15 +431,6 @@ export default function DashboardPage() {
     }
   }, [role, metadataInitialized])
 
-  const handleDisconnect = async () => {
-    try {
-      setAddress('')
-      router.push('/')
-    } catch (error) {
-      console.error('Error disconnecting:', error)
-    }
-  }
-
   const handleCreateStream = async () => {
     console.log('Streaming functionality temporarily disabled')
   }
@@ -470,20 +480,28 @@ export default function DashboardPage() {
             </Link>
             
             <div className="flex items-center gap-4">
-              <div className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08]
-                            hover:bg-white/[0.08] transition-all duration-200">
-                <span className="text-sm text-white/60">
-                  {address.slice(0, 6)}...{address.slice(-4)}
-                </span>
-              </div>
-              <button
-                onClick={handleDisconnect}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] 
-                         text-sm text-white/60 hover:bg-white/[0.08] hover:text-white 
-                         transition-all duration-200"
-              >
-                Disconnect
-              </button>
+              {address ? (
+                <>
+                  <div className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08]
+                                hover:bg-white/[0.08] transition-all duration-200">
+                    <span className="text-sm text-white/60">
+                      {`${address.slice(0, 6)}...${address.slice(-4)}`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleDisconnect}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] 
+                             text-sm text-white/60 hover:bg-white/[0.08] hover:text-white 
+                             transition-all duration-200"
+                  >
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <div className="text-sm text-white/60">
+                  Connecting...
+                </div>
+              )}
             </div>
           </div>
         </header>
