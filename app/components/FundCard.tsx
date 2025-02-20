@@ -152,7 +152,7 @@ const FundCard = ({ fund }: FundCardProps) => {
           <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm 
                        border border-fluid-primary/20">
             <div className="flex justify-between items-center mb-3">
-              <div className="text-fluid-primary font-medium text-sm">Active Investment Flows</div>
+              <div className="text-fluid-primary font-medium text-sm">Total Investment</div>
               <div className="text-xs bg-fluid-primary/10 px-2.5 py-1 rounded-full text-fluid-primary">
                 {streamData.activeStreams.length} active {streamData.activeStreams.length === 1 ? 'stream' : 'streams'}
               </div>
@@ -189,7 +189,7 @@ const FundCard = ({ fund }: FundCardProps) => {
 
                   {/* Bottom Row: Flowing Balance */}
                   <div className="flex justify-between items-center">
-                    <div className="text-sm text-white/60">Current Stream</div>
+                    <div className="text-sm text-white/60">Total</div>
                     <motion.div
                       animate={{ opacity: [0.5, 1] }}
                       transition={{

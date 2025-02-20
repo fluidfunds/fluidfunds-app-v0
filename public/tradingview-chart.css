@@ -1,0 +1,18 @@
+.tv-chart-container {
+  background-color: transparent !important;
+}
+
+.tv-chart {
+  background: transparent !important;
+}
+
+.tv-lightweight-charts {
+  background: transparent !important;
+}
+
+/* Customize other TradingView elements */
+.tv-floating-toolbar {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
