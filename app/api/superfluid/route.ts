@@ -1,54 +1,36 @@
-import { NextResponse } from 'next/server'
-
-const SUPERFLUID_SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL!
+import { NextResponse } from 'next/server';
+import { logger } from '@/app/utils/logger';
+import { SUPERFLUID_QUERY_URL } from '@/app/config/superfluid';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    console.log('Querying for address:', body.variables.fund)
-    
-    const response = await fetch(SUPERFLUID_SUBGRAPH_URL, {
+    const body = await request.json();
+    logger.log('API request body:', body);
+    const response = await fetch(SUPERFLUID_QUERY_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: `
-          query GetActiveStreams($fund: String!) {
-            account(id: $fund) {
-              inflows(
-                where: { currentFlowRate_gt: "0" }
-                orderBy: currentFlowRate
-                orderDirection: desc
-              ) {
-                id
-                currentFlowRate
-                streamedUntilUpdatedAt
-                updatedAtTimestamp
-                token {
-                  id
-                  symbol
-                  decimals
-                }
-                sender {
-                  id
-                }
-              }
-            }
-          }
-        `,
-        variables: {
-          fund: body.variables.fund
-        }
-      })
-    })
+        query: body.query,
+        variables: body.variables,
+      }),
+    });
 
-    const data = await response.json()
-    console.log('Raw stream data:', JSON.stringify(data, null, 2))
-    return NextResponse.json(data)
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('Subgraph fetch failed:', response.status, errorText);
+      return NextResponse.json({ error: `Subgraph fetch failed: ${errorText}` }, { status: response.status });
+    }
+
+    const data = await response.json();
+    if (data.errors) {
+      logger.error('Subgraph errors:', data.errors);
+      return NextResponse.json({ error: data.errors[0].message }, { status: 400 });
+    }
+    logger.log('Subgraph response:', data);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Superfluid API error:', error)
-    return NextResponse.json({ error: 'Failed to fetch streams' }, { status: 500 })
+    logger.error('Failed to fetch streams from subgraph:', error);
+    return NextResponse.json({ error: 'Failed to fetch streams' }, { status: 500 });
   }
 }
 
@@ -60,5 +42,5 @@ export async function OPTIONS() {
       'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
-  })
+  });
 }
