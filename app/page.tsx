@@ -6,282 +6,295 @@ import Benefits from './components/Benefits';
 import ProcessSteps from './components/ProcessSteps';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import HeroCarousel from './components/HeroCarousel';
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { CustomConnectButton } from './components/CustomConnectButton';
-import { 
-  createPublicClient, 
-  http, 
-  parseAbiItem, 
-  decodeFunctionData,
-  formatEther 
-} from 'viem';
-import { baseSepolia } from 'viem/chains';
-import { FLUID_FUNDS_ADDRESS } from '@/app/config/contracts';
-import { 
-  fundMetadataMap,
-  initializeMetadataMap,
-  type StoredMetadata
-} from '@/app/utils/fundMetadataMap';
-import { isValidAlchemyKey } from '@/app/utils/validation';
 import FundCard from '@/app/components/FundCard';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/app/utils/logger';
+import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
 
 interface FundInfo {
-  address: `0x${string}`;
-  verified?: boolean;
-  metadataUri?: string;
+  address: `0x${string}`; // Final processed fund address
   name: string;
-  description?: string;
-  image?: string;
   manager: `0x${string}`;
-  strategy?: string;
-  socialLinks?: { twitter?: string; discord?: string; telegram?: string };
-  performanceMetrics?: { tvl: string; returns: string; investors: number };
-  updatedAt?: number;
+  createdAt: number; // Processed timestamp
   blockNumber: number;
-  createdAt: number;
-  profitSharingPercentage: number;
-  subscriptionEndTime: number;
-  minInvestmentAmount: bigint;
-  formattedDate: string;
-  profitSharingFormatted: string;
-  minInvestmentFormatted: string;
+  fee: number;
+
 }
 
-const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+const FundsGrid = memo(({ funds, loading }: { funds: FundInfo[]; loading: boolean }) => {
+  console.log('FundsGrid rendered:', { fundsLength: funds.length, loading });
+  return loading ? (
+    <div className="flex justify-center items-center min-h-[400px]">
+      <div className="relative">
+        <div className="w-12 h-12 rounded-full border-2 border-fluid-primary/20 border-t-fluid-primary animate-spin" />
+        <div className="mt-4 text-fluid-primary/80">Loading funds...</div>
+      </div>
+    </div>
+  ) : funds.length > 0 ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {funds.map((fund) => (
+        <FundCard key={fund.address} fund={fund} />
+      ))}
+    </div>
+  ) : (
+    <div className="text-center text-white/70">No funds found.</div>
+  );
+}, (prevProps, nextProps) => {
+  const processFunds = (funds: FundInfo[]) => {
+    return funds.map(fund => ({
+      ...fund,
+      fee: Number(fund.fee) // Convert BigInt to number
+    }));
+  };
 
-const FundsGrid = memo(
-  ({ funds, loading }: { funds: FundInfo[]; loading: boolean }) => {
-    console.log('FundsGrid rendered:', { fundsLength: funds.length, loading });
-    return loading ? (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-fluid-primary/20 border-t-fluid-primary animate-spin" />
-          <div className="mt-4 text-fluid-primary/80">Loading funds...</div>
-        </div>
-      </div>
-    ) : funds.length > 0 ? (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {funds.map((fund) => (
-          <FundCard key={fund.address} fund={fund} />
-        ))}
-      </div>
-    ) : (
-      <div className="text-center text-white/70">No funds found.</div>
-    );
-  },
-  (prevProps, nextProps) =>
+  return (
     prevProps.loading === nextProps.loading &&
-    JSON.stringify(prevProps.funds) === JSON.stringify(nextProps.funds)
-);
+    JSON.stringify(processFunds(prevProps.funds)) === JSON.stringify(processFunds(nextProps.funds))
+  );
+});
 FundsGrid.displayName = 'FundsGrid';
 
 export default function Home() {
   const [trendingFunds, setTrendingFunds] = useState<FundInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [metadataInitialized, setMetadataInitialized] = useState(false);
   const { isConnected } = useAccount();
   const router = useRouter();
-
-  console.log('Home rendered:', { trendingFundsLength: trendingFunds.length, loading, metadataInitialized });
 
   const handleStartFund = async () => {
     if (!isConnected) return;
     router.push('/dashboard');
   };
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const storedData = initializeMetadataMap();
-        if (storedData) {
-          Object.entries(storedData).forEach(([key, value]) => {
-            fundMetadataMap.set(key.toLowerCase(), value as StoredMetadata);
-          });
+  const { funds: subgraphFunds, loading: fundsLoading, error: fundsError } = useFluidFundsSubgraphManager();
+
+  const fetchFunds = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (fundsLoading || fundsError) {
+        if (fundsError) {
+          console.error('Subgraph funds error:', fundsError);
+          logger.error('Subgraph funds error:', { error: fundsError, timestamp: Date.now() });
         }
-        setMetadataInitialized(true);
-      } catch (error) {
-        console.error('Error initializing metadata:', error);
-        setMetadataInitialized(true);
-      }
-    };
-    init();
-  }, []);
-
-  useEffect(() => {
-    const fetchFunds = async () => {
-      console.log('Environment check:', {
-        isDevelopment: process.env.NODE_ENV === 'development',
-        hasAlchemyKey: !!ALCHEMY_API_KEY,
-        keyPrefix: ALCHEMY_API_KEY?.substring(0, 6),
-        contractAddress: FLUID_FUNDS_ADDRESS,
-      });
-
-      if (!ALCHEMY_API_KEY) {
-        console.error('Alchemy API key not found. Please check your .env.local file');
-        setLoading(false);
+        setLoading(false); // Ensure loading is set to false even on error
         return;
       }
 
-      if (!isValidAlchemyKey(ALCHEMY_API_KEY)) {
-        console.error('Invalid Alchemy API key format:', ALCHEMY_API_KEY.substring(0, 6) + '...');
-        setLoading(false);
-        return;
-      }
+      logger.log('Subgraph funds received:', { funds: subgraphFunds, timestamp: Date.now() });
 
-      if (!metadataInitialized) {
-        console.log('Metadata not initialized yet');
-        return;
-      }
+      // Filter out duplicates and ensure unique addresses
+      const uniqueFunds = Array.from(new Map(subgraphFunds.map(fund => [fund.address, fund])).values());
+      const formattedFunds: FundInfo[] = uniqueFunds.map((fund) => ({
+        address: fund.address,
+        name: fund.name || `Fund ${fund.address.slice(0, 6)}`, // Fallback for name
+        manager: fund.manager,
+        //@ts-expect-error - BigInt to number conversion
+        createdAt: fund.createdAt,
+        blockNumber: fund.blockNumber,
+        fee: Number(fund.fee) / 100 // Divide by 100 to convert from basis points to percentage
+      }));
 
-      try {
-        setLoading(true);
-        console.log('Starting funds fetch with API key:', ALCHEMY_API_KEY.substring(0, 6) + '...');
-        const rpcUrl = `https://base-sepolia.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
-        console.log('Using RPC URL:', rpcUrl.replace(ALCHEMY_API_KEY, '[HIDDEN]'));
-
-        const publicClient = createPublicClient({
-          chain: baseSepolia,
-          transport: http(rpcUrl),
-        });
-
-        await publicClient.getBlockNumber();
-        console.log('Successfully connected to Base Sepolia');
-
-        const code = await publicClient.getBytecode({ address: FLUID_FUNDS_ADDRESS });
-        if (!code || code === '0x') {
-          console.error('No contract deployed at address:', FLUID_FUNDS_ADDRESS);
-          return;
-        }
-        console.log('Contract verified at address:', FLUID_FUNDS_ADDRESS);
-
-        console.log('Fetching fund creation events...');
-        const fundCreationEvents = await publicClient.getLogs({
-          address: FLUID_FUNDS_ADDRESS,
-          event: parseAbiItem('event FundCreated(address indexed fundAddress, address indexed manager, string name)'),
-          fromBlock: BigInt(0),
-        });
-        console.log(`Found ${fundCreationEvents.length} fund creation events`);
-
-        const sortedEvents = [...fundCreationEvents].sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
-
-        const getFundDetailsFromEvent = async (event: typeof fundCreationEvents[0]) => {
-          try {
-            if (!event.args?.fundAddress || !event.args?.manager) {
-              throw new Error('Missing event arguments');
-            }
-            const fundAddress = event.args.fundAddress;
-            const manager = event.args.manager;
-            const name = event.args.name || '';
-            const block = await publicClient.getBlock({ blockNumber: event.blockNumber });
-            return {
-              address: fundAddress,
-              manager: manager,
-              name: name,
-              createdAt: Number(block.timestamp),
-              blockNumber: Number(event.blockNumber),
-            };
-          } catch (error) {
-            console.error('Error getting event details:', error);
-            return null;
-          }
-        };
-
-        const getFundCreationParams = async (event: typeof fundCreationEvents[0]) => {
-          try {
-            if (!event.args?.fundAddress || !event.args?.manager) {
-              throw new Error('Missing event arguments');
-            }
-            const tx = await publicClient.getTransaction({ hash: event.transactionHash });
-            const createFundAbi = {
-              name: 'createFund',
-              inputs: [
-                { name: 'name', type: 'string' },
-                { name: 'profitSharingPercentage', type: 'uint256' },
-                { name: 'subscriptionEndTime', type: 'uint256' },
-                { name: 'minInvestmentAmount', type: 'uint256' },
-              ],
-              outputs: [{ type: 'address' }],
-              stateMutability: 'nonpayable',
-              type: 'function',
-            } as const;
-            const decoded = decodeFunctionData({ abi: [createFundAbi], data: tx.input });
-            if (!decoded.args || decoded.args.length < 4) {
-              throw new Error('Failed to decode function arguments');
-            }
-            const [name, profitShare, endTime, minAmount] = decoded.args as [string, bigint, bigint, bigint];
-            const params = {
-              name,
-              profitSharingPercentage: Number(profitShare),
-              subscriptionEndTime: Number(endTime),
-              minInvestmentAmount: Number(minAmount),
-              minInvestmentFormatted: `${new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2,
-              }).format(Number(formatEther(BigInt(minAmount))))} USDC`,
-            };
-            console.log('Parsed parameters:', params);
-            return params;
-          } catch (error) {
-            console.error('Error decoding fund creation params:', { error, transactionHash: event.transactionHash });
-            return null;
-          }
-        };
-
-        const fundsWithDetails = await Promise.all(
-          sortedEvents.map(async (event) => {
-            const fundAddress = event.args?.fundAddress;
-            if (!fundAddress) return null;
-            console.log(`\nProcessing fund: ${fundAddress}`);
-            const eventDetails = await getFundDetailsFromEvent(event);
-            if (!eventDetails) {
-              console.log(`Could not get event details for fund ${fundAddress}`);
-              return null;
-            }
-            const creationParams = await getFundCreationParams(event);
-            if (!creationParams) {
-              console.log(`Could not get creation params for fund ${fundAddress}`);
-              return null;
-            }
-            const fundDetails = {
-              ...eventDetails,
-              ...creationParams,
-              minInvestmentAmount: BigInt(creationParams.minInvestmentAmount),
-              formattedDate: new Date(eventDetails.createdAt * 1000).toLocaleDateString(),
-              profitSharingFormatted: `${(creationParams.profitSharingPercentage / 100).toFixed(2)}%`,
-              createdAt: eventDetails.createdAt,
-              minInvestmentFormatted: `${new Intl.NumberFormat('en-US', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 2,
-              }).format(Number(formatEther(BigInt(creationParams.minInvestmentAmount))))} USDC`,
-              profitSharingPercentage: creationParams.profitSharingPercentage,
-              subscriptionEndTime: creationParams.subscriptionEndTime,
-            } as FundInfo;
-            return fundDetails;
-          })
-        );
-
-        const validFunds = fundsWithDetails.filter((fund): fund is FundInfo => fund !== null);
-        console.log(`Found ${validFunds.length} valid funds`);
-        console.log('fetchFunds called, trendingFunds updated:', validFunds.length);
-        setTrendingFunds(validFunds);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching funds:', error);
-        setLoading(false);
-      }
-    };
-
-    if (metadataInitialized) {
-      fetchFunds();
+      setTrendingFunds(formattedFunds);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch funds';
+      console.error('Error formatting funds:', errorMsg);
+      logger.error('Error fetching funds:', { error: err, timestamp: Date.now() });
+      setTrendingFunds([]); // Reset to empty array on error to prevent crashes
+    } finally {
+      setLoading(false);
     }
-  }, [metadataInitialized]);
+  }, [subgraphFunds, fundsLoading, fundsError]);
+
+  useEffect(() => {
+    let mounted = true;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    fetchFunds();
+
+    intervalId = setInterval(() => {
+      if (mounted) fetchFunds();
+    }, 15000);
+
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [fetchFunds]);
+
+  if (!isConnected) {
+    return (
+      <div className="relative min-h-screen bg-fluid-bg text-fluid-white overflow-hidden">
+        <ParticleBackground />
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(circle at top, rgba(55, 0, 110, 0.15), transparent 70%)', mixBlendMode: 'screen' }}
+        />
+        <Header />
+        <main className="relative z-10 flex flex-col items-center justify-center px-6 pt-[180px] pb-[100px]">
+          <div className="flex flex-col items-center gap-[35px] w-full max-w-7xl">
+            <div id="features" className="flex flex-col items-center gap-6 w-full max-w-[840px] mx-auto">
+              <div className="overflow-hidden w-full">
+                <motion.div
+                  initial={{ y: 100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+                  className="text-center"
+                >
+                  <h1 className="text-[56px] leading-[1.2] tracking-[-0.02em] font-medium mb-0 text-[rgb(37,202,172)]">
+                    <span className="inline">Are You Tired of </span>
+                    <span className="inline">Rug-Pulls?</span>
+                  </h1>
+                </motion.div>
+              </div>
+              <div className="overflow-hidden w-full">
+                <motion.div
+                  initial={{ y: 100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                  className="text-center"
+                >
+                  <h2 className="text-[56px] leading-[1] tracking-[-0.02em] font-medium text-[rgb(37,202,172)]">
+                    Trade with Confidence.
+                  </h2>
+                </motion.div>
+              </div>
+              <div className="overflow-hidden max-w-[620px]">
+                <motion.div
+                  initial={{ y: 100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+                  className="text-center"
+                >
+                  <motion.p
+                    className="text-[20px] leading-[1.4] text-[rgba(255,255,255,0.7)] px-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4, duration: 0.8 }}
+                  >
+                    A safe platform for fund owners and managers to trade whitelisted tokens 
+                    with high market caps, ensuring security and transparency in every transaction.
+                  </motion.p>
+                </motion.div>
+              </div>
+              <div className="w-full">
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
+                >
+                  <HeroCarousel />
+                </motion.div>
+              </div>
+            </div>
+
+            <div id="process" className="w-full">
+              <ProcessSteps />
+            </div>
+
+            <motion.div
+              className="w-full max-w-4xl mx-auto py-16 px-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+            >
+              <div className="relative bg-gradient-to-br from-fluid-bg/40 to-fluid-primary/10 
+                              backdrop-blur-lg rounded-2xl p-8 border border-fluid-white/10 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-fluid-primary/10 to-purple-500/10 
+                                opacity-30 pointer-events-none" />
+                <div className="relative z-10">
+                  <div className="text-center mb-8">
+                    <h3 className="text-3xl font-medium text-fluid-primary mb-4">
+                      Create Your Fund
+                    </h3>
+                    <p className="text-lg text-fluid-white/70 max-w-2xl mx-auto mb-8">
+                      Create your own hedge fund in minutes and start managing assets with our 
+                      secure, transparent, and professional-grade platform.
+                    </p>
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-3">
+                        <CustomConnectButton />
+                        <span className="text-sm text-fluid-white/50">
+                          Connect your wallet to create your fund
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-center gap-6 mt-8">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">Low Gas Fees</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">Instant Setup</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-fluid-primary" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm text-fluid-white/70">Secure Platform</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              id="funds"
+              initial={{ opacity: 0, y: 80 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 2, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+              className="w-full py-20"
+            >
+              <div className="max-w-[1200px] mx-auto px-4">
+                <div className="text-center mb-16">
+                  <h2 className="text-[40px] font-medium mb-4 bg-gradient-to-r from-fluid-primary to-purple-500 bg-clip-text text-transparent">
+                    Smart Investing Made Simple
+                  </h2>
+                  <p className="text-xl text-white/70 max-w-2xl mx-auto">
+                    Get professional-grade returns with automated investment strategies. Start with as little as 100 USDC.
+                  </p>
+                </div>
+                <FundsGrid funds={trendingFunds} loading={loading} />
+              </div>
+            </motion.div>
+
+            <div id="benefits" className="mt-32">
+              <Benefits />
+            </div>
+
+            <div id="faq" className="mt-32">
+              <FAQ />
+            </div>
+          </div>
+        </main>
+        <footer className="border-t border-fluid-white-10 py-8">
+          <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+            <span className="text-fluid-primary font-medium">FluidFunds</span>
+            <a
+              href="https://x.com/fluidfunds"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-fluid-white-70 hover:text-fluid-white transition-colors"
+            >
+              Follow us on X
+            </a>
+          </div>
+        </footer>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-fluid-bg text-fluid-white overflow-hidden">
       <ParticleBackground />
-      <div
+      <div 
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(circle at top, rgba(55, 0, 110, 0.15), transparent 70%)', mixBlendMode: 'screen' }}
       />
@@ -353,8 +366,10 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           >
-            <div className="relative bg-gradient-to-br from-fluid-bg/40 to-fluid-primary/10 backdrop-blur-lg rounded-2xl p-8 border border-fluid-white/10 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-fluid-primary/10 to-purple-500/10 opacity-30 pointer-events-none" />
+            <div className="relative bg-gradient-to-br from-fluid-bg/40 to-fluid-primary/10 
+                            backdrop-blur-lg rounded-2xl p-8 border border-fluid-white/10 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-fluid-primary/10 to-purple-500/10 
+                              opacity-30 pointer-events-none" />
               <div className="relative z-10">
                 <div className="text-center mb-8">
                   <h3 className="text-3xl font-medium text-fluid-primary mb-4">

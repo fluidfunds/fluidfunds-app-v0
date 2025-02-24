@@ -1,141 +1,199 @@
-"use client";
-import { memo, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
-import { useFlowingBalance } from '@/app/hooks/useFlowingBalance';
+import { toast } from 'sonner';
 import { formatEther } from 'viem';
+import { useAccount } from 'wagmi';
 import { TrendingUp, Trophy, Clock, DollarSign } from 'lucide-react';
-import { logger } from '@/app/utils/logger';
+import { LoadingSpinner } from './LoadingSpinner';
 
-interface FundInfo {
-  address: `0x${string}`;
-  verified?: boolean;
-  metadataUri?: string;
-  name: string;
-  description?: string;
-  image?: string;
-  manager: `0x${string}`;
-  strategy?: string;
-  socialLinks?: { twitter?: string; discord?: string; telegram?: string };
-  performanceMetrics?: { tvl: string; returns: string; investors: number };
-  updatedAt?: number;
-  blockNumber: number;
-  createdAt: number;
-  profitSharingPercentage: number;
-  subscriptionEndTime: number;
-  minInvestmentAmount: bigint;
-  formattedDate: string;
-  profitSharingFormatted: string;
-  minInvestmentFormatted: string;
-  pnl?: {
-    percentage: number;
-    value: number;
-    isPositive: boolean;
-  };
-}
+import { useMemo } from 'react';
+import { useFlowingBalance } from '@/app/hooks/useFlowingBalance';
 
-interface FundCardProps {
-  fund: FundInfo;
-}
-
-const ANIMATION_MINIMUM_STEP_TIME = 100;
-
-const absoluteValue = (n: bigint) => (n >= BigInt(0) ? n : -n);
-
-const toFixedUsingString = (numStr: string, decimalPlaces: number): string => {
-  const [wholePart, decimalPart] = numStr.split('.');
-  if (!decimalPart || decimalPart.length <= decimalPlaces) {
-    return numStr.padEnd(wholePart.length + 1 + decimalPlaces, '0');
-  }
-  const decimalPartBigInt = BigInt(`${decimalPart.slice(0, decimalPlaces)}${decimalPart[decimalPlaces] >= '5' ? '1' : '0'}`);
-  return `${wholePart}.${decimalPartBigInt.toString().padStart(decimalPlaces, '0')}`;
+const formatBalance = (balance: bigint): string => {
+  const formatted = formatEther(balance);
+  // Format to max 4 decimal places and remove trailing zeros
+  return parseFloat(formatted).toFixed(4).replace(/\.?0+$/, '');
 };
 
-const useSignificantFlowingDecimal = (flowRate: bigint, animationStepTimeInMs: number): number | undefined =>
-  useMemo(() => {
-    if (flowRate === BigInt(0)) return undefined;
+interface FundInfo {
+  address: `0x${string}`; // Using fundAddress from subgraph
+  name: string;
+  manager: `0x${string}`;
+  createdAt: number; // Using blockTimestamp
+  blockNumber: number;
+  fee: number;
+}
 
-    const ticksPerSecond = 1000 / animationStepTimeInMs;
-    const flowRatePerTick = flowRate / BigInt(ticksPerSecond);
-    const formatted = formatEther(flowRatePerTick);
-    const [beforeEtherDecimal, afterEtherDecimal] = formatted.split('.');
+// Update the streaming summary section with the aggregated data
+const StreamingSummary = ({ aggregatedData, streamsCount }: {
+  aggregatedData: { totalDailyFlow: string; totalStreamed: string } | null;
+  streamsCount: number;
+}) => {
+  // Convert totalDailyFlow to flowRate (per second)
+  const flowRatePerSecond = useMemo(() => {
+    if (!aggregatedData?.totalDailyFlow) return BigInt(0);
+    return BigInt(Math.floor(Number(aggregatedData.totalDailyFlow) * 1e18 / 86400));
+  }, [aggregatedData?.totalDailyFlow]);
 
-    const isFlowingInWholeNumbers = absoluteValue(BigInt(beforeEtherDecimal)) > BigInt(0);
-    if (isFlowingInWholeNumbers) return 0;
+  // Get the starting balance and date
+  const startingBalance = useMemo(() => 
+    aggregatedData?.totalStreamed ? 
+    BigInt(Math.floor(Number(aggregatedData.totalStreamed) * 1e18)) : 
+    BigInt(0)
+  , [aggregatedData?.totalStreamed]);
 
-    const numberAfterDecimalWithoutLeadingZeroes = BigInt(afterEtherDecimal || '0');
-    const lengthToFirstSignificantDecimal = afterEtherDecimal
-      ?.toString()
-      .replace(numberAfterDecimalWithoutLeadingZeroes.toString(), '').length || 0;
+  const startDate = useMemo(() => new Date(), []);
 
-    return Math.min(lengthToFirstSignificantDecimal + 2, 18);
-  }, [flowRate, animationStepTimeInMs]);
+  // Use the flowing balance hook for animation
+  const flowingBalance = useFlowingBalance(
+    startingBalance,
+    startDate,
+    flowRatePerSecond
+  );
 
-const FundCard = memo(({ fund }: FundCardProps) => {
-  const { activeStreams, loading, error } = useSuperfluid(fund.address);
+  // Format the flowing balance for display
+  const displayBalance = formatBalance(flowingBalance);
 
-  const subscriptionEndDate = new Date(fund.subscriptionEndTime * 1000).toLocaleDateString();
-  const isSubscriptionOpen = fund.subscriptionEndTime > Date.now() / 1000;
+  return (
+    <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm 
+                   border border-fluid-primary/20">
+      <div className="flex justify-between items-center mb-3">
+        <div className="text-fluid-primary font-medium text-sm">Total Investment</div>
+        <div className="text-xs bg-fluid-primary/10 px-2.5 py-1 rounded-full text-fluid-primary">
+          {streamsCount} active {streamsCount === 1 ? 'stream' : 'streams'}
+        </div>
+      </div>
 
-  const defaultPnl = { percentage: 0, value: 0, isPositive: true };
-  const pnl = fund.pnl ?? defaultPnl;
+      <div className="space-y-3">
+        <div className="flex flex-col items-center py-4">
+          <div className="text-2xl font-bold text-fluid-primary">
+            {displayBalance} USDCx
+          </div>
+          <div className="text-sm text-white/60">Total Streamed</div>
+        </div>
 
-  const { totalFlowRate, earliestStartDate } = useMemo(() => {
-    if (!activeStreams.length) {
-      return { totalFlowRate: BigInt(0), earliestStartDate: new Date() };
+        {/* Animated Stream Indicator */}
+        <div className="relative h-2 bg-fluid-primary/5 rounded-full overflow-hidden">
+          <motion.div
+            className="absolute inset-0 w-full bg-gradient-to-r from-fluid-primary via-fluid-primary/50 to-transparent"
+            animate={{
+              x: ["0%", "100%"],
+              opacity: [1, 0.5, 1]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        </div>
+
+        {/* Daily Flow Rate */}
+        <div className="flex justify-between items-center pt-3 border-t border-fluid-primary/10">
+          <div className="text-sm text-white/60">Daily Flow</div>
+          <div className="text-sm font-medium text-fluid-primary">
+            {aggregatedData?.totalDailyFlow || '0'} USDCx/day
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FundCard = ({ fund }: { fund: FundInfo }) => {
+  const { 
+    activeStreams, 
+    loading: streamsLoading, 
+    error: streamsError, 
+    createStream, 
+    deleteStream,
+    aggregatedStreamData 
+  } = useSuperfluid(fund.address);
+  const { address: walletAddress } = useAccount();
+
+  // Format the creation date
+  const createdDate = new Date(fund.createdAt * 1000).toLocaleDateString();
+
+  // Placeholder values for missing fields
+  const defaultProfitShare = 'N/A';
+  const defaultSubscriptionEnd = 'N/A';
+  const defaultPnl = {
+    percentage: 0,
+    value: 0,
+    isPositive: true
+  };
+
+  // Handle stream creation (example; adjust as needed)
+  const handleCreateStream = async (monthlyAmount: string) => {
+    try {
+      const hash = await createStream(fund.address, monthlyAmount);
+      toast.success('Stream created successfully!', { id: 'stream-create' });
+    } catch (err) {
+      toast.error('Failed to create stream: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
-    const total = activeStreams.reduce((sum, stream) => sum + BigInt(stream.flowRate), BigInt(0));
-    const earliest = activeStreams.reduce((earliest, stream) => {
-      const streamDate = new Date(Number(stream.updatedAtTimestamp) * 1000);
-      return streamDate < earliest ? streamDate : earliest;
-    }, new Date(Number(activeStreams[0].updatedAtTimestamp) * 1000));
-    return { totalFlowRate: total, earliestStartDate: earliest };
+  };
+
+  // Handle stream deletion (example; adjust as needed)
+  const handleDeleteStream = async (streamId: string) => {
+    try {
+      const stream = activeStreams.find(s => s.id === streamId);
+      if (stream) {
+        const hash = await deleteStream(stream.receiver as `0x${string}`);
+        toast.success('Stream deleted successfully!', { id: 'stream-delete' });
+      }
+    } catch (err) {
+      toast.error('Failed to delete stream: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    }
+  };
+
+  // Calculate total flow rate and earliest stream date
+  const totalFlowRate = useMemo(() => {
+    if (!activeStreams.length) return BigInt(0);
+    return activeStreams.reduce((sum, stream) => sum + BigInt(stream.flowRate), BigInt(0));
   }, [activeStreams]);
 
-  const totalStreamBalance = useFlowingBalance(BigInt(0), earliestStartDate, totalFlowRate);
-  const decimalPlaces = useSignificantFlowingDecimal(totalFlowRate, ANIMATION_MINIMUM_STEP_TIME);
+  const earliestStreamDate = useMemo(() => {
+    if (!activeStreams.length) return new Date();
+    return activeStreams.reduce((earliest, stream) => {
+      const streamDate = new Date(Number(stream.updatedAtTimestamp) * 1000);
+      return streamDate < earliest ? streamDate : earliest;
+    }, new Date());
+  }, [activeStreams]);
 
-  const formatValue = (value: bigint) => {
-    const formattedEther = formatEther(value);
-    const formatted = decimalPlaces !== undefined
-      ? toFixedUsingString(formattedEther, decimalPlaces)
-      : formattedEther;
-    return `${formatted} USDCx`;
-  };
+  // Use flowing balance hook
+  const flowingBalance = useFlowingBalance(
+    BigInt(0),
+    earliestStreamDate,
+    totalFlowRate
+  );
 
+  // Calculate total daily flow from unique streams
   const totalDailyFlow = useMemo(() => {
-    const dailyFlow = Number(totalFlowRate) / 10 ** 18 * 86400;
-    return dailyFlow.toFixed(2);
-  }, [totalFlowRate]);
-
-  if (loading) {
-    logger.log('Loading streams for fund:', { address: fund.address, name: fund.name, timestamp: Date.now() });
-  } else if (error) {
-    logger.error('Error loading streams for fund:', { address: fund.address, name: fund.name, error, timestamp: Date.now() });
-  } else {
-    logger.log('FundCard stream data:', {
-      fundAddress: fund.address,
-      fundName: fund.name,
-      activeStreamsCount: activeStreams.length,
-      totalFlowRate: totalFlowRate.toString(),
-      totalStreamBalance: totalStreamBalance.toString(),
-      timestamp: Date.now(),
+    if (!activeStreams.length) return "0.00";
+    
+    // Use Map to store unique streams by receiver
+    const uniqueStreams = new Map();
+    activeStreams.forEach(stream => {
+      if (!uniqueStreams.has(stream.receiver)) {
+        uniqueStreams.set(stream.receiver, stream);
+      }
     });
-  }
 
-  console.log('FundCard rendered:', { 
-    fundAddress: fund.address, 
-    activeStreamsLength: activeStreams.length, 
-    totalStreamBalance: totalStreamBalance.toString(), 
-    loading, 
-    error, 
-    timestamp: Date.now() 
-  });
+    // Calculate total daily flow from unique streams
+    return Array.from(uniqueStreams.values())
+      .reduce((total, stream) => {
+        return total + (Number(stream.flowRate) / 10 ** stream.token.decimals * 86400);
+      }, 0)
+      .toFixed(2);
+  }, [activeStreams]);
 
-  const handleLinkClick = () => {
-    logger.log('Link clicked:', { fundAddress: fund.address, timestamp: Date.now() });
-  };
+  // Calculate total streamed amount
+  const totalStreamed = useMemo(() => {
+    if (!flowingBalance) return "0.00";
+    return formatBalance(flowingBalance);
+  }, [flowingBalance]);
 
   return (
     <motion.div
@@ -143,15 +201,16 @@ const FundCard = memo(({ fund }: FundCardProps) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900/95 to-gray-900 
-                  border border-white/[0.08] hover:border-fluid-primary/30 
-                  transition-all duration-300 shadow-xl hover:shadow-fluid-primary/20 min-h-[600px] w-full"
+                border border-white/[0.08] hover:border-fluid-primary/30 
+                transition-all duration-300 shadow-xl hover:shadow-fluid-primary/20 min-h-[600px] w-full"
     >
       <div className="p-6 flex flex-col h-full">
+        {/* Header Section */}
         <div className="flex flex-col gap-4 mb-6">
           <div className="flex items-center">
             <div className="relative">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-fluid-primary to-fluid-primary/60 
-                            flex items-center justify-center shadow-lg shadow-fluid-primary/20">
+                          flex items-center justify-center shadow-lg shadow-fluid-primary/20">
                 <Trophy className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -161,103 +220,76 @@ const FundCard = memo(({ fund }: FundCardProps) => {
               </h3>
               <div className="flex items-center text-white/60 text-sm gap-2">
                 <span>Pro Trader</span>
-                <span className="w-1 h-1 rounded-full bg-white/40" />
-                <span>Since {new Date(fund.createdAt * 1000).getFullYear()}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-green-500/10 text-green-400 
+          {/* Performance Badge (placeholder since PNL isn’t available) */}
+          <div className="flex items-center gap-2 bg-gray-500/10 text-gray-400 
                        px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm 
-                       border border-green-500/20 self-start">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            +24.5% Past Month
+                       border border-gray-500/20 self-start">
+            Performance: N/A
           </div>
         </div>
 
+        {/* Metrics Grid - Maintaining structure with placeholders */}
         <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05] hover:border-fluid-primary/20 transition-colors group/card">
+          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
+                        hover:border-fluid-primary/20 transition-colors group/card">
             <div className="flex items-center text-white/70 mb-3">
               <TrendingUp className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
               Current PNL
             </div>
             <div className="flex flex-col">
               <div className="text-2xl font-bold text-white flex items-center gap-2">
-                <span className={`${pnl.isPositive ? "text-green-400" : "text-red-400"} flex items-center gap-1`}>
-                  {pnl.isPositive ? "+" : "-"}{pnl.percentage.toFixed(2)}%
+                <span className={`${defaultPnl.isPositive ? "text-green-400" : "text-red-400"} flex items-center gap-1`}>
+                  {defaultPnl.isPositive ? "+" : "-"}{defaultPnl.percentage.toFixed(2)}%
                   <span className="text-sm font-normal">30d</span>
                 </span>
               </div>
               <div className="text-sm text-white/60 mt-1">
-                {pnl.isPositive ? "+" : "-"}${Math.abs(pnl.value).toLocaleString()}
+                {defaultPnl.isPositive ? "+" : "-"}${(defaultPnl.value).toLocaleString()}
               </div>
             </div>
           </div>
           
-          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05] hover:border-fluid-primary/20 transition-colors group/card">
+          <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
+                        hover:border-fluid-primary/20 transition-colors group/card">
             <div className="flex items-center text-white/70 mb-3">
               <DollarSign className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
-              Profit Share
+              Fund Fee
             </div>
-            <div className="flex flex-col">
-              <div className="text-2xl font-bold text-white">
-                {fund.profitSharingFormatted}
-              </div>
-              <div className="text-sm text-white/60 mt-1">
-                of total profits
-              </div>
+            <div className="text-2xl font-bold text-white">
+              {fund.fee ? `${fund.fee.toFixed(2)}%` : 'N/A'}
+            </div>
+            <div className="text-sm text-white/60 mt-1">
+              of total profits
             </div>
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex-1 mb-4 flex items-center justify-center">
-            <div className="text-fluid-primary">Loading streams...</div>
+        {/* Replace the existing streams section with the new summary */}
+        {streamsLoading ? (
+          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm 
+                       border border-fluid-primary/20">
+            <LoadingSpinner />
           </div>
-        ) : error ? (
-          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-2xl p-5 backdrop-blur-sm border border-fluid-primary/20">
-            <div className="text-red-400 font-medium">Error: {error}</div>
+        ) : streamsError ? (
+          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm 
+                       border border-fluid-primary/20 text-red-400">
+            {streamsError}
           </div>
         ) : (
-          <div className="flex-1 mb-4 bg-fluid-primary/5 rounded-xl p-3 backdrop-blur-sm border border-fluid-primary/20">
-            <div className="flex justify-between items-center mb-3">
-              <div className="text-fluid-primary font-medium text-sm">Total Investment</div>
-              <div className="text-xs bg-fluid-primary/10 px-2.5 py-1 rounded-full text-fluid-primary">
-                {activeStreams.length} active {activeStreams.length === 1 ? 'stream' : 'streams'}
-              </div>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-white/60">Total</div>
-              <span className="text-lg font-bold text-fluid-primary">
-                {formatValue(totalStreamBalance)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-white/60">Per Day</div>
-              <span className="text-sm font-medium text-fluid-primary">
-                {totalDailyFlow} USDCx/day
-              </span>
-            </div>
-            <div className="relative h-0.5 bg-fluid-primary/5 rounded-full overflow-hidden mt-3">
-              <motion.div
-                className="absolute left-0 top-0 h-full bg-gradient-to-r from-fluid-primary/30 to-fluid-primary/50"
-                initial={{ x: '-100%' }}
-                animate={{ x: '100%' }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
+          <StreamingSummary 
+            aggregatedData={aggregatedStreamData}
+            streamsCount={activeStreams.length}
+          />
         )}
 
+        {/* Actions Section */}
         <div className="mt-auto space-y-2">
           <Link
             href={`/fund/${fund.address}`}
-            onClick={handleLinkClick}
             className="block w-full py-2.5 rounded-xl border border-fluid-primary/30 
                      text-center text-fluid-primary font-medium hover:bg-fluid-primary/10 
                      transition-all duration-300"
@@ -266,21 +298,19 @@ const FundCard = memo(({ fund }: FundCardProps) => {
           </Link>
         </div>
 
-        {isSubscriptionOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center justify-center gap-2 text-sm text-white/60 
-                     bg-white/[0.02] rounded-full px-4 py-2 border border-white/[0.05]"
-          >
-            <Clock className="w-4 h-4 text-fluid-primary" />
-            Investment Window Closes: {subscriptionEndDate}
-          </motion.div>
-        )}
+        {/* Subscription Timer */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-4 flex items-center justify-center gap-2 text-sm text-white/60 
+                   bg-white/[0.02] rounded-full px-4 py-2 border border-white/[0.05]"
+        >
+          <Clock className="w-4 h-4 text-fluid-primary" />
+          Subscription Status: {defaultSubscriptionEnd}
+        </motion.div>
       </div>
     </motion.div>
   );
-}, (prevProps, nextProps) => prevProps.fund.address === nextProps.fund.address);
+};
 
-FundCard.displayName = 'FundCard';
 export default FundCard;

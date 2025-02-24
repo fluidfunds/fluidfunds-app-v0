@@ -1,7 +1,8 @@
 'use client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
-import { baseSepolia } from 'viem/chains'
+import { Config } from 'wagmi'
+import { sepolia } from 'viem/chains'
 import { http } from 'viem' // This is the transport we'll use for the Sepolia chain
 import {
   getDefaultConfig,
@@ -20,13 +21,13 @@ const { wallets } = getDefaultWallets({
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!
 })
 
-const config = getDefaultConfig({
+const config: Config = getDefaultConfig({
   appName: 'FluidFunds',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!,
-  chains: [baseSepolia],
+  chains: [sepolia],
   ssr: true,
   transports: {
-    [baseSepolia.id]: http()
+    [sepolia.id]: http()
   },
   wallets: wallets,
   syncConnectedChain: true,

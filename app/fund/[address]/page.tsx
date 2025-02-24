@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-'use client'
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Wallet, LineChart, Copy } from 'lucide-react'
-import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { useContractRead, useAccount } from 'wagmi'
-import { formatEther } from 'viem'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { toast } from 'sonner'
-
-import { useStreamData } from '@/app/hooks/useStreamData'
-import ParticleBackground from '@/app/components/ParticleBackground'
-import { FLUID_FUNDS_ABI } from '@/app/config/contracts'
-import { useSuperfluid } from '@/app/hooks/useSuperfluid'
+'use client';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Wallet, LineChart, Copy } from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useAccount } from 'wagmi';
+import { formatEther } from 'viem';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { toast } from 'sonner';
+import ParticleBackground from '@/app/components/ParticleBackground';
+import { useSuperfluid } from '@/app/hooks/useSuperfluid';
 import { 
   AreaChart, 
   Area, 
@@ -24,6 +21,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { RecentTradingActivity } from '@/app/components/RecentTradingActivity';
+import { useFluidFundDetails } from '@/app/hooks/useFluidFundDetails';
 
 // Add this mock data generation function at the top of your file
 const generateMockPerformanceData = () => {
@@ -48,31 +46,28 @@ const generateMockPerformanceData = () => {
 
 // Type Definitions
 interface StreamInfo {
-  id: string
+  id: string;
   sender: {
-    id: string
-  }
-  flowRatePerDay: number
-  currentAmount: number
+    id: string;
+  };
+  flowRatePerDay: number;
+  currentAmount: number;
 }
 
-interface StreamData {
-  currentFlowRate: string
-  updatedAtTimestamp: string
-  id?: string
-  sender?: {
-    id: string
-  }
-  flowRatePerDay?: number
-  currentAmount?: number
+interface Stream {
+  id: string;
+  sender: {
+    id: string;
+  };
+  flowRate: string;
+  currentAmount?: string;
 }
 
 interface FundDetails {
-  name: string
-  manager: `0x${string}`
-  profitSharingPercentage: number
-  subscriptionEndTime: number
-  minInvestmentAmount: bigint
+  name: string;
+  manager: `0x${string}`;
+  profitSharingPercentage: number;
+  subscriptionEndTime: number;
 }
 
 type FundData = [
@@ -82,22 +77,17 @@ type FundData = [
   bigint,         // subscriptionEndTime
   bigint,         // minInvestmentAmount
   boolean         // active
-]
-
-interface UseStreamDataReturn {
-  activeStreams: StreamInfo[]
-  loading: boolean
-}
+];
 
 interface AddressRowProps {
-  label: string
-  address: string
-  showFull?: boolean
+  label: string;
+  address: string;
+  showFull?: boolean;
 }
 
 interface FundPerformanceChartProps {
-  tvl: number
-  percentageChange: number
+  tvl: number;
+  percentageChange: number;
 }
 
 const FundPerformanceChart = ({ tvl, percentageChange }: FundPerformanceChartProps) => {
@@ -226,88 +216,84 @@ const FundPerformanceChart = ({ tvl, percentageChange }: FundPerformanceChartPro
 };
 
 export default function FundDetailPage() {
-  const params = useParams()
-  const fundAddress = (params?.address as string) as `0x${string}`
+  const params = useParams();
+  const fundAddress = (params?.address as string) as `0x${string}`;
   
-  const [streamData, setStreamData] = useState<StreamData>({
-    currentFlowRate: '0',
-    updatedAtTimestamp: (Date.now() / 1000).toString(),
-  })
-  const [fundDetails, setFundDetails] = useState<FundDetails | null>(null)
-  const [streamAmount, setStreamAmount] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
-  const { createStream } = useSuperfluid(fundAddress)
-  const { isConnected } = useAccount()
-  const [cachedStreams, setCachedStreams] = useState<StreamInfo[]>([])
-  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now())
-  const { activeStreams, loading: streamsLoading } = useStreamData(fundAddress) as UseStreamDataReturn
+  const { fund, loading: fundLoading, error: fundError } = useFluidFundDetails(fundAddress);
+  
+  const [fundDetails, setFundDetails] = useState<FundDetails | null>(null);
+  const [streamAmount, setStreamAmount] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const { createStream, activeStreams, loading: streamsLoading } = useSuperfluid(fundAddress); // Using useSuperfluid for streams
+  const { isConnected } = useAccount();
+  const [cachedStreams, setCachedStreams] = useState<StreamInfo[]>([]);
+  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
 
   const handleCreateStream = async () => {
     if (!streamAmount) {
-      toast.error('Please enter a stream amount')
-      return
+      toast.error('Please enter a stream amount');
+      return;
     }
 
-    setIsStreaming(true)
+    setIsStreaming(true);
     try {
-      const hash = await createStream(fundAddress, streamAmount)
-      console.log('Stream created with hash:', hash)
-      toast.success('Stream created successfully!')
-      setStreamAmount('')
+      const hash = await createStream(fundAddress, streamAmount);
+      console.log('Stream created with hash:', hash);
+      toast.success('Stream created successfully!');
+      setStreamAmount('');
     } catch (error: unknown) {
-      console.error('Error creating stream:', error)
-      toast.error('Failed to create stream. Please ensure you have enough USDCx balance.')
+      console.error('Error creating stream:', error);
+      toast.error('Failed to create stream. Please ensure you have enough USDCx balance.');
     } finally {
-      setIsStreaming(false)
+      setIsStreaming(false);
     }
-  }
-
-  const { data: fundData } = useContractRead({
-    address: fundAddress,
-    abi: FLUID_FUNDS_ABI,
-    functionName: 'allFunds',
-    args: [BigInt(fundAddress)]
-  }) as { data: FundData | undefined }
+  };
 
   useEffect(() => {
-    console.log('Fund Data:', fundData)
-    if (fundData && Array.isArray(fundData)) {
+    if (fund) {
       setFundDetails({
-        name: fundData[0],
-        manager: fundData[1],
-        profitSharingPercentage: Number(fundData[2]) / 100,
-        subscriptionEndTime: Number(fundData[3]),
-        minInvestmentAmount: fundData[4]
-      })
+        name: fund.name,
+        manager: fund.manager,
+        profitSharingPercentage: Number(fund.fee) / 100,
+        subscriptionEndTime: fund.startTime + Number(fund.duration)
+      });
     }
-  }, [fundData])
+  }, [fund]);
 
   useEffect(() => {
-    const now = Date.now()
-    // Only update if 2 seconds have passed since last update
+    const now = Date.now();
     if (now - lastUpdateTime > 2000) {
-      setCachedStreams(activeStreams)
-      setLastUpdateTime(now)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const transformedStreams = activeStreams.map((stream: any) => ({
+        id: stream.id,
+        sender: {
+          id: typeof stream.sender === 'object' ? stream.sender.id : 'Unknown'
+        },
+        flowRatePerDay: parseFloat(formatEther(BigInt(stream.flowRate))) * 86400,
+        currentAmount: 0
+      }));
+      setCachedStreams(transformedStreams);
+      setLastUpdateTime(now);
     }
-  }, [activeStreams, lastUpdateTime])
+  }, [activeStreams, lastUpdateTime]);
 
   const formatAddress = useCallback((address: string): string => 
-    `${address.slice(0, 6)}...${address.slice(-4)}`, [])
+    `${address.slice(0, 6)}...${address.slice(-4)}`, []);
 
   const totalFlowRate = useMemo(() => 
     cachedStreams.reduce((acc, stream) => acc + stream.flowRatePerDay, 0),
     [cachedStreams]
-  )
+  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const copyToClipboard = async (text: string): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(text)
-      toast.success('Address copied to clipboard')
+      await navigator.clipboard.writeText(text);
+      toast.success('Address copied to clipboard');
     } catch (err: unknown) {
-      toast.error('Failed to copy address')
+      toast.error('Failed to copy address');
     }
-  }
+  };
 
   // Memoize the active investors section
   const ActiveInvestorsSection = useMemo(() => (
@@ -375,7 +361,7 @@ export default function FundDetailPage() {
         )}
       </div>
     </div>
-  ), [cachedStreams, streamsLoading]) // Remove copyToClipboard from dependencies
+  ), [cachedStreams, streamsLoading, copyToClipboard]);
 
   // Add new MemoizedAddressDisplay component
   const AddressDisplay = useMemo(() => {
@@ -404,15 +390,9 @@ export default function FundDetailPage() {
           <AddressRow label="Fund Manager" address={fundDetails.manager} />
         )}
         <div className="flex justify-between items-center pt-3">
-          <span className="text-white/60">Profit Share</span>
+          <span className="text-white/60">Fund Fee</span>
           <span className="text-white font-medium">
-            {fundDetails ? `${(Number(fundDetails.profitSharingPercentage) / 100).toFixed(1)}%` : '--'}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-white/60">Min. Investment</span>
-          <span className="text-white font-medium">
-            {fundDetails ? `${formatEther(fundDetails.minInvestmentAmount)} USDC` : '--'}
+            {fundDetails ? `${fundDetails.profitSharingPercentage}%` : '--'}
           </span>
         </div>
       </div>
@@ -474,7 +454,7 @@ export default function FundDetailPage() {
         </div>
       </div>
     </div>
-  ), [fundDetails, copyToClipboard, totalFlowRate, cachedStreams.length])
+  ), [fundDetails, copyToClipboard, totalFlowRate, cachedStreams.length]);
 
   // Calculate total value locked and percentage change
   const tvlMetrics = useMemo(() => {
@@ -495,172 +475,185 @@ export default function FundDetailPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black">
       <ParticleBackground />
       
-      {/* Navigation Bar */}
-      <nav className="sticky top-0 z-50 backdrop-blur-lg border-b border-white/10 bg-black/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-white/60 hover:text-white 
-                     transition-colors group"
-          >
-            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Funds</span>
-          </Link>
-          {isConnected && (
-            <div className="flex items-center gap-4">
-              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-green-400 text-sm">Connected</span>
-            </div>
-          )}
+      {fundLoading ? (
+        // Show loading state
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
         </div>
-      </nav>
-
-      {/* Updated Hero Section */}
-      {FundHeroSection}
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Investment Panel */}
-          <div className="space-y-6">
-            {/* Investment Card with improved styling */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/[0.03] rounded-xl p-6 backdrop-blur-sm border border-white/[0.08] sticky top-24"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-white">Investment Details</h3>
-                <div className="flex items-center gap-2 text-green-400 text-sm">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span>Open for Investment</span>
+      ) : fundError ? (
+        // Show error state
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-red-400 bg-red-400/10 p-4 rounded-lg">
+            {fundError}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Navigation Bar */}
+          <nav className="sticky top-0 z-50 backdrop-blur-lg border-b border-white/10 bg-black/20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-white/60 hover:text-white 
+                        transition-colors group"
+              >
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                <span>Back to Funds</span>
+              </Link>
+              {isConnected && (
+                <div className="flex items-center gap-4">
+                  <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-green-400 text-sm">Connected</span>
                 </div>
-              </div>
+              )}
+            </div>
+          </nav>
 
+          {/* Updated Hero Section */}
+          {FundHeroSection}
+
+          {/* Main Content */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Left Column - Investment Panel */}
               <div className="space-y-6">
-                {AddressDisplay}
-
-                {!isConnected ? (
-                  <div className="text-center py-6">
-                    <Wallet className="w-12 h-12 text-fluid-primary mx-auto mb-3" />
-                    <h4 className="text-white font-medium mb-2">Connect Your Wallet</h4>
-                    <p className="text-white/60 text-sm mb-4">
-                      Connect your wallet to start investing
-                    </p>
-                    <div className="flex justify-center">
-                      <ConnectButton 
-                        chainStatus="icon"
-                        showBalance={false}
-                        accountStatus={{
-                          smallScreen: "avatar",
-                          largeScreen: "full",
-                        }}
-                      />
+                {/* Investment Card with improved styling */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white/[0.03] rounded-xl p-6 backdrop-blur-sm border border-white/[0.08] sticky top-24"
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-semibold text-white">Investment Details</h3>
+                    <div className="flex items-center gap-2 text-green-400 text-sm">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      <span>Open for Investment</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Existing investment form code */}
-                    <div>
-                      <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
-                        Monthly Investment Amount
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="streamAmount"
-                          type="number"
-                          value={streamAmount}
-                          onChange={(e) => setStreamAmount(e.target.value)}
-                          placeholder="Enter amount"
-                          className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
-                                  text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
-                                  transition-colors"
-                          min="0"
-                          step="0.01"
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
-                          USDC/month
+
+                  <div className="space-y-6">
+                    {AddressDisplay}
+
+                    {!isConnected ? (
+                      <div className="text-center py-6">
+                        <Wallet className="w-12 h-12 text-fluid-primary mx-auto mb-3" />
+                        <h4 className="text-white font-medium mb-2">Connect Your Wallet</h4>
+                        <p className="text-white/60 text-sm mb-4">
+                          Connect your wallet to start investing
+                        </p>
+                        <div className="flex justify-center">
+                          <ConnectButton 
+                            chainStatus="icon"
+                            showBalance={false}
+                            accountStatus={{
+                              smallScreen: "avatar",
+                              largeScreen: "full",
+                            }}
+                          />
                         </div>
                       </div>
-                      <p className="mt-2 text-sm text-white/40">
-                        Min. investment: {fundDetails ? formatEther(fundDetails.minInvestmentAmount) : '0'} USDC
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Existing investment form code */}
+                        <div>
+                          <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
+                            Monthly Investment Amount
+                          </label>
+                          <div className="relative">
+                            <input
+                              id="streamAmount"
+                              type="number"
+                              value={streamAmount}
+                              onChange={(e) => setStreamAmount(e.target.value)}
+                              placeholder="Enter amount"
+                              className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
+                                      text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
+                                      transition-colors"
+                              min="0"
+                              step="0.01"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                              USDC/month
+                            </div>
+                          </div>
+                        </div>
 
-                    <button
-                      onClick={handleCreateStream}
-                      disabled={isStreaming || !streamAmount}
-                      className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
-                              hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
-                              disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      {isStreaming ? (
-                        <>
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                            className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
-                          />
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        'Invest Now'
-                      )}
-                    </button>
+                        <button
+                          onClick={handleCreateStream}
+                          disabled={isStreaming || !streamAmount}
+                          className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
+                                  hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
+                                  disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                          {isStreaming ? (
+                            <>
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                                className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                              />
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            'Invest Now'
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </motion.div>
+                </motion.div>
 
-            {/* Active Investors List - Mobile only */}
-            <div className="lg:hidden">
-              {ActiveInvestorsSection}
-            </div>
-          </div>
-
-          {/* Center and Right Columns */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Updated Performance History Section */}
-            <div className="bg-white/[0.02] rounded-xl border border-white/[0.08] p-6 backdrop-blur-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-white">Performance History</h2>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
-                    1M
-                  </button>
-                  <button className="px-3 py-1.5 rounded-full text-sm bg-fluid-primary text-white">
-                    3M
-                  </button>
-                  <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
-                    1Y
-                  </button>
+                {/* Active Investors List - Mobile only */}
+                <div className="lg:hidden">
+                  {ActiveInvestorsSection}
                 </div>
               </div>
-              <FundPerformanceChart 
-                tvl={tvlMetrics.tvl} 
-                percentageChange={tvlMetrics.percentageChange}
-              />
-            </div>
 
-            {/* Active Investors - Desktop only */}
-            <div className="hidden lg:block">
-              {ActiveInvestorsSection}
-            </div>
+              {/* Center and Right Columns */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Updated Performance History Section */}
+                <div className="bg-white/[0.02] rounded-xl border border-white/[0.08] p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-white">Performance History</h2>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
+                        1M
+                      </button>
+                      <button className="px-3 py-1.5 rounded-full text-sm bg-fluid-primary text-white">
+                        3M
+                      </button>
+                      <button className="px-3 py-1.5 rounded-full text-sm bg-white/5 text-white/60 hover:text-white transition-colors">
+                        1Y
+                      </button>
+                    </div>
+                  </div>
+                  <FundPerformanceChart 
+                    tvl={tvlMetrics.tvl} 
+                    percentageChange={tvlMetrics.percentageChange}
+                  />
+                </div>
 
-            {/* Trading Activity with improved styling */}
-            <div className="bg-white/[0.02] rounded-xl backdrop-blur-sm border border-white/[0.08] p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Recent Trading Activity</h3>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <LineChart className="w-4 h-4" />
-                  <span>10 most recent trades</span>
+                {/* Active Investors - Desktop only */}
+                <div className="hidden lg:block">
+                  {ActiveInvestorsSection}
+                </div>
+
+                {/* Trading Activity with improved styling */}
+                <div className="bg-white/[0.02] rounded-xl backdrop-blur-sm border border-white/[0.08] p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-white">Recent Trading Activity</h3>
+                    <div className="flex items-center gap-2 text-white/60 text-sm">
+                      <LineChart className="w-4 h-4" />
+                      <span>10 most recent trades</span>
+                    </div>
+                  </div>
+                  <RecentTradingActivity />
                 </div>
               </div>
-              <RecentTradingActivity />
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
-  )
+  );
 }

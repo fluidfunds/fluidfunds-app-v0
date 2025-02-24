@@ -1,10 +1,10 @@
 // src/app/config/superfluid.ts
 export const SUPERFLUID_ADDRESSES = {
   CFAv1Forwarder: '0xcfA132E353cB4E398080B9700609bb008eceB125',
-  USDCx: '0x918E53Db799d7435D2Ef676A4B14c8163ea6D325',
+  USDCx: '0xb598E6C621618a9f63788816ffb50Ee2862D443B',
 } as const;
 
-export const SUPERFLUID_QUERY_URL = 'https://subgraph-endpoints.superfluid.dev/base-sepolia/protocol-v1';
+export const SUPERFLUID_QUERY_URL = 'https://subgraph-endpoints.superfluid.dev/eth-sepolia/protocol-v1';
 
 export const CFAv1ForwarderABI = [
   {
