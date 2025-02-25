@@ -10,9 +10,8 @@ const MobileMenu = () => {
 
   const menuItems = [
     { id: 'funds', label: 'Funds', type: 'scroll' },
-    { id: 'benefits', label: 'Benefits', type: 'scroll' },
     { id: 'leaderboard', label: 'Leaderboard', type: 'link', href: '/leaderboard' },
-    { id: 'faq', label: 'FAQ', type: 'scroll' },
+    { id: 'wallet-prediction', label: 'Wallet Prediction', type: 'link', href: '/wallet-prediction' }
   ]
 
   const handleItemClick = (item: typeof menuItems[0]) => {

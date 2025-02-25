@@ -1,8 +1,6 @@
 "use client";
 import { motion } from 'framer-motion';
 import Header from './components/Header';
-import FAQ from './components/FAQ';
-import Benefits from './components/Benefits';
 import ProcessSteps from './components/ProcessSteps';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import HeroCarousel from './components/HeroCarousel';
@@ -264,14 +262,6 @@ export default function Home() {
                 <FundsGrid funds={trendingFunds} loading={loading} />
               </div>
             </motion.div>
-
-            <div id="benefits" className="mt-32">
-              <Benefits />
-            </div>
-
-            <div id="faq" className="mt-32">
-              <FAQ />
-            </div>
           </div>
         </main>
         <footer className="border-t border-fluid-white-10 py-8">
@@ -444,14 +434,6 @@ export default function Home() {
               <FundsGrid funds={trendingFunds} loading={loading} />
             </div>
           </motion.div>
-
-          <div id="benefits" className="mt-32">
-            <Benefits />
-          </div>
-
-          <div id="faq" className="mt-32">
-            <FAQ />
-          </div>
         </div>
       </main>
       <footer className="border-t border-fluid-white-10 py-8">

@@ -6,9 +6,8 @@ import { CustomConnectButton } from './CustomConnectButton'
 
 const navigation = [
   { name: 'Funds', href: '#funds' },
-  { name: 'Benefits', href: '#benefits' },
   { name: 'Leaderboard', href: '/leaderboard' },
-  { name: 'FAQ', href: '#faq' }
+  { name: 'Wallet Prediction', href: '/wallet-prediction' }
 ]
 
 const Header = () => {
