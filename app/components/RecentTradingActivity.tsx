@@ -1,98 +1,138 @@
-import { useMemo } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ArrowUpRight, ArrowDownRight, CircleDollarSign, LineChart } from 'lucide-react';
+import { ExternalLink, LineChart, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Trade {
   id: string;
-  type: 'LONG' | 'SHORT';
-  pair: string;
-  amount: number;
-  profit: number;
-  timestamp: number;
-  status: 'OPEN' | 'CLOSED';
+  amountIn: number;
+  amountOut: number;
+  tokenIn: string;
+  tokenOut: string;
+  timestamp: Date;
+  transactionHash: string;
 }
 
-const generateMockTrades = (): Trade[] => {
-  const pairs = ['ETH/USDC', 'BTC/USDC', 'LINK/USDC', 'MATIC/USDC'];
-  const trades: Trade[] = [];
-  
-  for (let i = 0; i < 10; i++) {
-    const isProfit = Math.random() > 0.3;
-    trades.push({
-      id: `trade-${i}`,
-      type: Math.random() > 0.5 ? 'LONG' : 'SHORT',
-      pair: pairs[Math.floor(Math.random() * pairs.length)],
-      amount: Math.floor(Math.random() * 50000) + 10000,
-      profit: isProfit ? (Math.random() * 8 + 1) : -(Math.random() * 5 + 1),
-      timestamp: Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000),
-      status: Math.random() > 0.3 ? 'CLOSED' : 'OPEN'
-    });
-  }
-  
-  return trades.sort((a, b) => b.timestamp - a.timestamp);
+interface RecentTradingActivityProps {
+  trades: Trade[];
+  loading: boolean;
+}
+
+const getTokenSymbol = (address: string) => {
+  const lowerAddress = address.toLowerCase();
+  if (lowerAddress.includes('920d')) return 'USDCx';
+  if (lowerAddress.includes('5fd2')) return 'DAIx';
+  return address.slice(-5, -1);
 };
 
-export const RecentTradingActivity = () => {
-  const trades = useMemo(() => generateMockTrades(), []);
+// Add a number formatting helper function
+const formatAmount = (amount: number) => {
+  // Check if amount is very small (less than 0.0001)
+  if (amount < 0.0001) {
+    return amount.toExponential(4);
+  }
+  // For larger numbers, show up to 6 decimal places
+  return amount.toLocaleString('en-US', {
+    maximumFractionDigits: 6,
+    minimumFractionDigits: 2
+  });
+};
 
-  const formatTimeAgo = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivityProps) => {
+  // Sort trades by timestamp in descending order (newest first)
+  const sortedTrades = [...trades].sort((a, b) => {
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
+  
+  // Get only the first 5 trades (most recent)
+  const recentTrades = sortedTrades.slice(0, 5);
+  
+  console.log('All trades:', trades);
+  console.log('Sorted and filtered trades:', recentTrades);
+
+  const formatTime = (timestamp: Date) => {
+    // Ensure we're working with a proper Date object
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInSeconds = Math.floor(diffInMs / 1000);
+    
+    // More granular time differences
+    if (diffInSeconds < 30) return 'just now';
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes}m ago`;
+    }
+    if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours}h ago`;
+    }
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d ago`;
   };
 
   return (
-    <div className="space-y-4">
-      {trades.map((trade) => (
-        <div
-          key={trade.id}
-          className="flex items-center justify-between py-4 border-b border-white/[0.08] group hover:bg-white/[0.02] px-4 -mx-4 transition-colors rounded-lg"
-        >
-          {/* Left side - Trade info */}
-          <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center
-              ${trade.type === 'LONG' 
-                ? 'bg-green-500/10 text-green-400' 
-                : 'bg-red-500/10 text-red-400'}`}
-            >
-              {trade.type === 'LONG' ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownRight className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="text-white font-medium">{trade.pair}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full
-                  ${trade.type === 'LONG' 
-                    ? 'bg-green-500/10 text-green-400' 
-                    : 'bg-red-500/10 text-red-400'}`}
-                >
-                  {trade.type}
-                </span>
-                {trade.status === 'OPEN' && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
-                    OPEN
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-white/60">{formatTimeAgo(trade.timestamp)}</p>
-            </div>
-          </div>
-
-          {/* Right side - Profit/Loss */}
-          <div className="text-right">
-            <p className={`font-medium flex items-center gap-1 justify-end
-              ${trade.profit >= 0 ? 'text-green-400' : 'text-red-400'}`}
-            >
-              <CircleDollarSign className="w-4 h-4" />
-              {trade.profit >= 0 ? '+' : ''}{trade.profit.toFixed(2)}%
-            </p>
-            <p className="text-sm text-white/60">
-              ${trade.amount.toLocaleString()}
-            </p>
-          </div>
+    <div className="bg-white/[0.02] rounded-xl backdrop-blur-sm border border-white/[0.08] p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-white">Recent Trading Activity</h3>
+        <div className="flex items-center gap-2 text-white/60 text-sm">
+          <LineChart className="w-4 h-4" />
+          <span>Last {Math.min(trades.length, 5)} of {trades.length} trades</span>
         </div>
-      ))}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fluid-primary"></div>
+        </div>
+      ) : recentTrades.length > 0 ? (
+        <div className="divide-y divide-white/[0.08] space-y-4">
+          {recentTrades.map((trade) => (
+            <div key={trade.id} className="pt-4 first:pt-0">
+              <div className="flex items-center justify-between group">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">
+                        {formatAmount(trade.amountIn)} {getTokenSymbol(trade.tokenIn)}
+                      </span>
+                      <span className="text-white/60 px-1">→</span>
+                      <span className="text-white font-medium">
+                        {formatAmount(trade.amountOut)} {getTokenSymbol(trade.tokenOut)}
+                      </span>
+                    </div>
+                    <div className="px-2 py-1 rounded-full bg-white/[0.05] text-xs text-white/60">
+                      {formatTime(trade.timestamp)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/40">
+                      {trade.transactionHash.slice(0, 6)}...{trade.transactionHash.slice(-4)}
+                    </span>
+                  </div>
+                </div>
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${trade.transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                  title="View on Etherscan"
+                >
+                  <ExternalLink className="w-4 h-4 text-white" />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 text-white/60">
+          <LineChart className="w-12 h-12 mb-3 opacity-40" />
+          <p>No trades executed yet</p>
+        </div>
+      )}
     </div>
   );
 };

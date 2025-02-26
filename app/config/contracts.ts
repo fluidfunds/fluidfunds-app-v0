@@ -420,3 +420,23 @@ export const SUPERFLUID_FLOW_ABI = [
     "type": "function"
   }
 ] as const;
+
+// Trade Executor ABI
+export const TRADE_EXECUTOR_ABI = [
+  {
+    inputs: [
+      { name: 'tokenIn', type: 'address' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'minAmountOut', type: 'uint256' },
+      { name: 'poolFee', type: 'uint24' }
+    ],
+    name: 'executeTrade', // Fixed function name
+    outputs: [{ name: 'amountOut', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  }
+] as const;
+
+// Also add the Trade Executor contract address
+export const TRADE_EXECUTOR_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3' as const;
