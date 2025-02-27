@@ -125,7 +125,6 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
     isPositive: true
   };
 
-  // Handle stream creation (example; adjust as needed)
   const handleCreateStream = async (monthlyAmount: string) => {
     try {
       const hash = await createStream(fund.address, monthlyAmount);
@@ -135,7 +134,6 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
     }
   };
 
-  // Handle stream deletion (example; adjust as needed)
   const handleDeleteStream = async (streamId: string) => {
     try {
       const stream = activeStreams.find(s => s.id === streamId);

@@ -311,6 +311,6 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
     fetchActiveStreams,
     usdcxBalance,
     fetchUSDCxBalance,
-    aggregatedStreamData, // Ensure this is available for FundCard
+    aggregatedStreamData, 
   };
 }
