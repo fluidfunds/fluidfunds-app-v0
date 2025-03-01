@@ -1,10 +1,10 @@
 // /app/config/contracts.ts
 
 // FluidFunds contract address on Sepolia
-export const FLUID_FUNDS_ADDRESS = '0x5c5c0dc48b671b0e9bc7cd1dcbe3f59976505901' as const;
+export const FLUID_FUNDS_ADDRESS = '0x42d678925115915Fe4b2e1C1b13f7Dd2B00a25de' as const;
 
 // Subgraph URL for FluidFunds on Sepolia
-export const FLUID_FUNDS_SUBGRAPH_URL = 'https://api.studio.thegraph.com/query/104988/fluidfunds/v0.0.2' as const;
+export const FLUID_FUNDS_SUBGRAPH_URL = 'https://api.studio.thegraph.com/query/104988/fluidfunds/v0.0.3' as const;
 
 // FluidFunds ABI (typed as const for TypeScript inference with wagmi/viem)
 export const FLUID_FUNDS_ABI = [
