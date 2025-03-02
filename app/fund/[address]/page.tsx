@@ -388,7 +388,11 @@ const MainDashboardContent = ({
           </button>
         </div>
       </div>
-      <PerformanceHistory tvl={tvlMetrics.tvl} percentageChange={tvlMetrics.percentageChange} />
+      <PerformanceHistory 
+        fundAddress={fundAddress} 
+        tvl={tvlMetrics.tvl} 
+        percentageChange={tvlMetrics.percentageChange} 
+      />
     </div>
     
     {/* Split layout for trading and investors */}
