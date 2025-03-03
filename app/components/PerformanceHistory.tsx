@@ -16,6 +16,7 @@ const POLLING_INTERVAL = 30000; // 30 seconds
 // Default colors for tokens
 const TOKEN_COLORS: { [key: string]: string } = {
   'USDCx': '#2775CA',
+  'BTC': '#F7931A',
   'DAIx': '#F5AC37',
   'ETHx': '#627EEA',
   'MATICx': '#8247E5',
@@ -38,6 +39,7 @@ const DEFAULT_TOKEN_PRICES: { [key: string]: number } = {
   'ETH': 2500.00,
   'DAIx': 1.01,
   'USDCx': 1.00,
+  'BTC': 89284,
   'USDC': 1.00,
   'DAI': 1.01
 };
@@ -88,60 +90,7 @@ const formatAddress = (address?: string): string => {
 };
 
 // Helper function to create test portfolio when needed
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const createTestPortfolio = (): Asset[] => {
-  console.log("📊 Using test portfolio data (no real data available)");
-  return [
-    {
-      id: '1',
-      name: 'USD Coin Super',
-      symbol: 'USDCx',
-      price: 1.00,
-      allocation: 30,
-      value: 300,
-      color: TOKEN_COLORS['USDCx'],
-      change: 0.01,
-      balance: 300,
-      isDemo: false
-    },
-    {
-      id: '2',
-      name: 'DAI Super',
-      symbol: 'DAIx',
-      price: 1.01,
-      allocation: 20,
-      value: 200,
-      color: TOKEN_COLORS['DAIx'],
-      change: 0.35,
-      balance: 198.02,
-      isDemo: false
-    },
-    {
-      id: '3',
-      name: 'Fluid Funds Sample',
-      symbol: 'FFSampleFund',
-      price: 0.001,
-      allocation: 10,
-      value: 100,
-      color: TOKEN_COLORS['FFSampleFund'],
-      change: 1.25,
-      balance: 100000,
-      isDemo: false
-    },
-    {
-      id: '4',
-      name: 'USD Coin',
-      symbol: 'fUSDC',
-      price: 1.00,
-      allocation: 10,
-      value: 100,
-      color: TOKEN_COLORS['USDC'],
-      change: 0.02,
-      balance: 100,
-      isDemo: false
-    },
-  ];
-};
+
 
 export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: PerformanceHistoryProps) => {
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '1Y'>('3M');
