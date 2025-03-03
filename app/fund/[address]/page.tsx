@@ -44,7 +44,7 @@ export default function FundDetailPage() {
   const { role, isManager, isLoading: roleLoading } = useUserRole(fundAddress); // Use the hook
   
   const [fundDetails, setFundDetails] = useState<FundDetails | null>(null);
-  const { activeStreams, loading: streamsLoading } = useSuperfluid(fundAddress); // Using useSuperfluid for streams
+  const { activeStreams, aggregatedStreamData, loading: streamsLoading } = useSuperfluid(fundAddress); // Using useSuperfluid for streams
   const { isConnected } = useAccount();
   const [cachedStreams, setCachedStreams] = useState<StreamInfo[]>([]);
   const [lastUpdateTime, setLastUpdateTime] = useState(Date.now());
@@ -174,18 +174,19 @@ export default function FundDetailPage() {
 
   // Calculate total value locked and percentage change
   const tvlMetrics = useMemo(() => {
-    const totalInvested = cachedStreams.reduce((acc, stream) => acc + stream.currentAmount, 0);
-    // Calculate 24h change based on flow rates
-    const dailyInflow = totalFlowRate || 0;
-    const percentageChange = totalInvested > 0 
-      ? (dailyInflow / totalInvested) * 100 
-      : 0;
-
+    if (aggregatedStreamData && aggregatedStreamData.totalStreamed) {
+      const totalStreamed = Number(aggregatedStreamData.totalStreamed);
+      const percentageChange = totalStreamed > 0 ? (totalFlowRate / totalStreamed) * 100 : 0;
+      return {
+        tvl: totalStreamed,
+        percentageChange
+      };
+    }
     return {
-      tvl: totalInvested,
-      percentageChange
+      tvl: 0,
+      percentageChange: 0
     };
-  }, [cachedStreams, totalFlowRate]);
+  }, [aggregatedStreamData, totalFlowRate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black relative overflow-x-hidden">

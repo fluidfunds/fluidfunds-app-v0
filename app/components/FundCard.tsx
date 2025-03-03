@@ -116,14 +116,31 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
   // Format the creation date
   const createdDate = new Date(fund.createdAt * 1000).toLocaleDateString();
 
-  // Placeholder values for missing fields
-  const defaultProfitShare = 'N/A';
-  const defaultSubscriptionEnd = 'N/A';
-  const defaultPnl = {
-    percentage: 0,
-    value: 0,
-    isPositive: true
-  };
+  // Compute the performance metric as (totalDailyFlow / totalStreamed) * 100
+  const performanceMetric = useMemo(() => {
+    if (
+      aggregatedStreamData &&
+      aggregatedStreamData.totalStreamed &&
+      Number(aggregatedStreamData.totalStreamed) !== 0
+    ) {
+      const perf =
+        (Number(aggregatedStreamData.totalDailyFlow) /
+          Number(aggregatedStreamData.totalStreamed)) *
+        100;
+      return perf.toFixed(2);
+    }
+    return "0.00";
+  }, [aggregatedStreamData]);
+
+  // Define defaultPnl based on performanceMetric for the Current PNL card
+  const defaultPnl = useMemo(() => {
+    const percentage = parseFloat(performanceMetric);
+    return {
+      isPositive: percentage >= 0,
+      percentage,
+      value: 0, // Placeholder value; adjust if needed.
+    };
+  }, [performanceMetric]);
 
   const handleCreateStream = async (monthlyAmount: string) => {
     try {
@@ -222,11 +239,9 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
             </div>
           </div>
 
-          {/* Performance Badge (placeholder since PNL isn’t available) */}
-          <div className="flex items-center gap-2 bg-gray-500/10 text-gray-400 
-                       px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm 
-                       border border-gray-500/20 self-start">
-            Performance: N/A
+          {/* Updated Performance Badge */}
+          <div className="flex items-center gap-2 bg-gray-500/10 text-gray-400 px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-gray-500/20 self-start">
+            Performance: +{performanceMetric}%
           </div>
         </div>
 
@@ -242,11 +257,10 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
               <div className="text-2xl font-bold text-white flex items-center gap-2">
                 <span className={`${defaultPnl.isPositive ? "text-green-400" : "text-red-400"} flex items-center gap-1`}>
                   {defaultPnl.isPositive ? "+" : "-"}{defaultPnl.percentage.toFixed(2)}%
-                  <span className="text-sm font-normal">30d</span>
                 </span>
               </div>
               <div className="text-sm text-white/60 mt-1">
-                {defaultPnl.isPositive ? "+" : "-"}${(defaultPnl.value).toLocaleString()}
+                {/* {defaultPnl.isPositive ? "+" : "-"}${defaultPnl.value.toLocaleString()} */}
               </div>
             </div>
           </div>
@@ -304,7 +318,7 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
                    bg-white/[0.02] rounded-full px-4 py-2 border border-white/[0.05]"
         >
           <Clock className="w-4 h-4 text-fluid-primary" />
-          Subscription Status: {defaultSubscriptionEnd}
+          Subscription Status: N/A
         </motion.div>
       </div>
     </motion.div>

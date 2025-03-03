@@ -33,9 +33,16 @@ const nextConfig: NextConfig = {
     unoptimized: true
   },
   reactStrictMode: true,
-  swcMinify: true,
   typescript: {
     ignoreBuildErrors: false,
+  },
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        // Add any Turbopack-specific aliases here if needed
+      },
+      // Add any other Turbopack configurations if needed
+    },
   },
   webpack: (config) => {
     config.resolve.fallback = { fs: false, net: false, tls: false }

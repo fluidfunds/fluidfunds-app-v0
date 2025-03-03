@@ -1,31 +1,64 @@
 'use client'
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Trophy, TrendingUp, Users, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager'
+import { useSuperfluid } from '@/app/hooks/useSuperfluid'
+import { useFlowingBalance } from '@/app/hooks/useFlowingBalance'
+import { useMemo } from 'react'
+import { formatEther } from 'viem'
 
-interface FundRanking {
-  address: string
-  name: string
-  totalInvestment: number
-  investors: number
-  performance: number
-  rank: number
+// Helper function to format a bigint balance (e.g. to 4 decimal places)
+const formatBalance = (balance: bigint): string => {
+  const formatted = formatEther(balance)
+  return parseFloat(formatted).toFixed(4).replace(/\.?0+$/, '')
+}
+
+// Adjusted interface so that metadata and its performanceMetrics are optional.
+interface FundWithMetadata {
+  address: `0x${string}`
+  // Some funds may not have a full metadata object from the subgraph,
+  // so we allow these properties to be optional.
+  metadata?: {
+    name?: string
+    performanceMetrics?: {
+      tvl: string // Fallback TVL in USDCx
+      returns: string // e.g. performance percentage
+      investors: number
+    }
+  }
+  // If metadata is missing, the fund might have a top‑level name.
+  name?: string
 }
 
 export default function LeaderboardPage() {
-  // Initialize with the first fund with real data
-  const [funds] = useState<FundRanking[]>([
-    {
-      address: '0xcb07179bbf7930447ea0f980bf96ac12bd4bac14',
-      name: 'TraderB',
-      totalInvestment: 25000,
-      investors: 1,
-      performance: 24.5, // Updated to real performance value
-      rank: 1
-    }
-  ])
-  
+  // Use the subgraph to get all funds and the count of available funds.
+  // Make sure your useFluidFundsSubgraphManager hook returns an object with { funds, loading, error }
+  const { funds, loading, error } = useFluidFundsSubgraphManager()
+
+  // Sort funds by fallback TVL (using default "0" if metrics aren't available)
+  const sortedFunds = funds.sort((a: FundWithMetadata, b: FundWithMetadata) => {
+    const tvlA = parseFloat(a.metadata?.performanceMetrics?.tvl ?? "0")
+    const tvlB = parseFloat(b.metadata?.performanceMetrics?.tvl ?? "0")
+    return tvlB - tvlA
+  })
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-fluid-bg pt-24 pb-12 flex items-center justify-center">
+        <p className="text-white">Loading funds...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-fluid-bg pt-24 pb-12 flex items-center justify-center">
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-fluid-bg pt-24 pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,8 +69,7 @@ export default function LeaderboardPage() {
         >
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-fluid-white-70 hover:text-fluid-white 
-                     transition-colors group"
+            className="inline-flex items-center gap-2 text-fluid-white-70 hover:text-fluid-white transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             <span>Back to Home</span>
@@ -45,7 +77,7 @@ export default function LeaderboardPage() {
         </motion.div>
 
         <div className="text-center">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl font-bold text-fluid-white mb-4"
@@ -58,7 +90,8 @@ export default function LeaderboardPage() {
             transition={{ delay: 0.1 }}
             className="text-fluid-white-70 max-w-2xl mx-auto"
           >
-            Track the performance of all FluidFunds and discover the top performing investment opportunities
+            Track the performance of all FluidFunds and discover the top performing
+            investment opportunities
           </motion.p>
         </div>
 
@@ -71,31 +104,9 @@ export default function LeaderboardPage() {
               <div className="text-right">Performance</div>
               <div className="text-right">Rank</div>
             </div>
-            
-            {funds.map((fund, index) => (
-              <Link 
-                key={fund.address}
-                href={`/fund/${fund.address}`}
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="grid grid-cols-6 gap-4 p-4 text-fluid-white hover:bg-fluid-white/[0.08] 
-                           transition-colors cursor-pointer group"
-                >
-                  <div className="col-span-2 font-medium flex items-center gap-2">
-                    {fund.name}
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      →
-                    </span>
-                  </div>
-                  <div className="text-right">${fund.totalInvestment.toLocaleString()}</div>
-                  <div className="text-right">{fund.investors}</div>
-                  <div className="text-right text-green-400">+{fund.performance}%</div>
-                  <div className="text-right font-medium">#{fund.rank}</div>
-                </motion.div>
-              </Link>
+
+            {sortedFunds.map((fund: FundWithMetadata, index: number) => (
+              <FundRow key={fund.address} fund={fund} rank={index + 1} />
             ))}
           </div>
         </div>
@@ -142,5 +153,73 @@ export default function LeaderboardPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+interface FundRowProps {
+  fund: FundWithMetadata
+  rank: number
+}
+
+const FundRow = ({ fund, rank }: FundRowProps) => {
+  // Get both activeStreams and aggregatedStreamData from the hook
+  const { aggregatedStreamData, activeStreams } = useSuperfluid(fund.address)
+
+  // Calculate the per‑second flow rate from the total daily flow if available
+  const flowRatePerSecond = useMemo(() => {
+    if (!aggregatedStreamData?.totalDailyFlow) return BigInt(0)
+    return BigInt(Math.floor(Number(aggregatedStreamData.totalDailyFlow) * 1e18 / 86400))
+  }, [aggregatedStreamData?.totalDailyFlow])
+
+  // Determine the starting balance based on the total streamed amount
+  const startingBalance = useMemo(() => {
+    return aggregatedStreamData?.totalStreamed
+      ? BigInt(Math.floor(Number(aggregatedStreamData.totalStreamed) * 1e18))
+      : BigInt(0)
+  }, [aggregatedStreamData?.totalStreamed])
+
+  // Get a flowing (animated) balance using the hook (the start date here is set to now)
+  const flowingBalance = useFlowingBalance(startingBalance, new Date(), flowRatePerSecond)
+  const displayBalance = formatBalance(flowingBalance)
+
+  // Use the provided fund name or a fallback
+  const name =
+    fund.metadata?.name ??
+    fund.name ??
+    `Fund ${fund.address.slice(0, 6)}...${fund.address.slice(-4)}`
+
+  // Instead of using metadata returns, compute a performance metric
+  // For example, we compute the daily yield as (daily flow / total streamed) * 100
+  const performanceMetric = useMemo(() => {
+    if (aggregatedStreamData && aggregatedStreamData.totalStreamed && Number(aggregatedStreamData.totalStreamed) !== 0) {
+      const perf = (Number(aggregatedStreamData.totalDailyFlow) / Number(aggregatedStreamData.totalStreamed)) * 100
+      return perf.toFixed(2)
+    }
+    return "0.00"
+  }, [aggregatedStreamData])
+
+  // Instead of metadata investors, show the number of active streams
+  const investorsCount = activeStreams.length
+
+  return (
+    <Link href={`/fund/${fund.address}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: rank * 0.1 }}
+        className="grid grid-cols-6 gap-4 p-4 text-fluid-white hover:bg-fluid-white/[0.08] transition-colors cursor-pointer group"
+      >
+        <div className="col-span-2 font-medium flex items-center gap-2">
+          {name}
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+            →
+          </span>
+        </div>
+        <div className="text-right">${displayBalance}</div>
+        <div className="text-right">{investorsCount}</div>
+        <div className="text-right text-green-400">+{performanceMetric}%</div>
+        <div className="text-right font-medium">#{rank}</div>
+      </motion.div>
+    </Link>
   )
 }

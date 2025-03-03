@@ -6,6 +6,8 @@ import { FundPerformanceChart } from './FundPerformanceChart';
 import { LineChart, Info, BarChart3, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
+import { useTokenAveragePrices } from '@/app/hooks/useTokenAveragePrices';
+import { useSuperfluid } from '@/app/hooks/useSuperfluid';
 
 // Configuration constants
 const CHAIN_ID = 'eth-sepolia'; // Sepolia testnet
@@ -162,6 +164,13 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
   // Store the current fund address to prevent race conditions
   const currentFundAddress = useRef<string | undefined>(fundAddress);
 
+  // Add this near your other hooks
+  const { averagePrices } = useTokenAveragePrices(fundAddress as `0x${string}`);
+
+  // Use the Superfluid hook to get active streams for the given fund address
+  const { activeStreams } = useSuperfluid(fundAddress as `0x${string}`);
+  const activeStreamsCount = activeStreams.length;
+
   // Log the fund address we're working with
   useEffect(() => {
     if (fundAddress) {
@@ -244,13 +253,19 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       const value = balance * price;
       const allocation = portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
       
-      // Calculate average purchase price (USDCx spent / token units)
-      const avgPurchasePrice = balance > 0 ? usdcxBalance / balance : price;
+      // Get average purchase price from trade history if available
+      const tokenKey = token.contract_address.toLowerCase();
+      const tradeHistoryPrice = averagePrices[tokenKey]?.avgPurchasePrice;
+      
+      // Use trade history price if available, otherwise fallback to previous calculation
+      const avgPurchasePrice = tradeHistoryPrice !== undefined 
+        ? tradeHistoryPrice
+        : (balance > 0 ? usdcxBalance / balance : price);
       
       // Use TOKEN_COLORS if available, otherwise generate a color
       const color = TOKEN_COLORS[symbol] || `hsl(${Math.abs(symbol.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
       
-      // Calculate price change percentage
+      // Calculate price change percentage based on trade history
       const priceChange = avgPurchasePrice > 0 
         ? ((price - avgPurchasePrice) / avgPurchasePrice) * 100 
         : 0;
@@ -261,7 +276,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
         symbol,
         price,
         avgPurchasePrice,
-        usdcxSpent: usdcxBalance, // Amount of USDCx spent
+        usdcxSpent: averagePrices[tokenKey]?.totalSpent || usdcxBalance, // Use trade data if available
         balance,
         value,
         allocation,
@@ -273,7 +288,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
     console.log('Processed portfolio assets:', portfolioAssets);
     return portfolioAssets.sort((a, b) => b.value - a.value);
-  }, []);
+  }, [averagePrices]);
 
   // Fetch portfolio data using Covalent API
   useEffect(() => {
@@ -382,8 +397,9 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
   };
 
   const filteredAssets = assets.filter(asset =>
-    asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    asset.name !== "Unknown" && 
+    (asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     asset.symbol.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const sortedAssets = [...filteredAssets].sort((a, b) => {
@@ -551,25 +567,6 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
             {/* Chart Content */}
           <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <p className="text-sm text-white/60">Total Value Locked</p>
-                <p className="text-2xl font-bold text-white">
-                  {new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    minimumFractionDigits: 0,
-                  }).format(tvl)}
-                </p>
-              </div>
-              <div className={`px-3 py-1 rounded-full text-sm ${
-                percentageChange >= 0 
-                  ? 'bg-green-500/10 text-green-400' 
-                  : 'bg-red-500/10 text-red-400'
-              }`}>
-                {percentageChange >= 0 ? '+' : ''}{percentageChange.toFixed(2)}%
-              </div>
-            </div>
 
             {/* Time Range Selector */}
             <div className="flex gap-2 mb-6">
@@ -589,7 +586,11 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
             {/* Chart */}
             <div className="h-[300px]">
-              <FundPerformanceChart tvl={tvl} percentageChange={percentageChange} />
+              <FundPerformanceChart
+                tvl={tvl}
+                percentageChange={percentageChange}
+                activeStreamsCount={activeStreamsCount}
+              />
             </div>
           </div>
           </motion.div>
@@ -784,11 +785,13 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                                   minimumFractionDigits: asset.avgPurchasePrice < 1 ? 4 : 2,
                                 }).format(asset.avgPurchasePrice) : 
                                 "N/A"}
-                              {asset.usdcxSpent !== undefined && asset.balance > 0 ? 
+                              {asset.avgPurchasePrice !== undefined && (
                                 <div className="text-xs text-white/50 mt-1">
-                                  {(asset.usdcxSpent / asset.balance).toFixed(6)} USDCx/token
-                                </div> : 
-                                null}
+                                  {asset.usdcxSpent !== undefined && asset.balance > 0 
+                                    ? `Based on ${asset.usdcxSpent.toFixed(2)} USDCx spent`
+                                    : ''}
+                                </div>
+                              )}
                         </td>
                         <td className="px-4 py-4">
                           <div className={`flex items-center gap-1 ${
@@ -816,14 +819,16 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                               )}
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-white/10 rounded-full h-1.5">
-                              <div className="h-1.5 rounded-full" style={{ 
+                          <div className="flex flex-col gap-1">
+                            <div className="w-full bg-white/10 rounded-full h-2">
+                              <div className="h-2 rounded-full" style={{ 
                                 width: `${asset.allocation}%`,
                                 backgroundColor: asset.color
                               }}></div>
                             </div>
-                                <span>{asset.allocation.toFixed(2)}%</span>
+                            <span className="text-xs text-white/70 text-center">
+                              {asset.allocation.toFixed(2)}%
+                            </span>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
