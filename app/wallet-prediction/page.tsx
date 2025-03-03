@@ -3,18 +3,68 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Trophy, Activity, BarChart2, Zap, TrendingUp, Wallet } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
+import { useRouter } from 'next/navigation';
 
 export default function WalletPredictionMarketPage() {
   const [activeTab, setActiveTab] = useState('active');
+  const [activeWalletType, setActiveWalletType] = useState('evm');
   
-  // Sample data for the wallet leaderboard
+  // Sample data for the wallet leaderboard with new address and network fields
   const topWallets = [
-    { id: 1, name: 'CryptoWhale', socialName: '@whale_trader', totalValue: 2450000, performance: 42.8, rank: 1 },
-    { id: 2, name: 'DefiKing', socialName: '@defi_king', totalValue: 1870000, performance: 36.5, rank: 2 },
-    { id: 3, name: 'TokenMaster', socialName: '@token_master', totalValue: 1250000, performance: 31.2, rank: 3 },
-    { id: 4, name: 'AlphaSeeker', socialName: '@alpha_seek', totalValue: 980000, performance: 28.7, rank: 4 },
-    { id: 5, name: 'CryptoNinja', socialName: '@crypto_ninja', totalValue: 750000, performance: 23.4, rank: 5 },
+    {
+      id: 1,
+      name: 'CryptoWhale',
+      socialName: '@whale_trader',
+      totalValue: 2450000,
+      performance: 42.8,
+      rank: 1,
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      network: 'evm'
+    },
+    {
+      id: 2,
+      name: 'DefiKing',
+      socialName: '@defi_king',
+      totalValue: 1870000,
+      performance: 36.5,
+      rank: 2,
+      address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
+      network: 'evm'
+    },
+    {
+      id: 3,
+      name: 'TokenMaster',
+      socialName: '@token_master',
+      totalValue: 1250000,
+      performance: 31.2,
+      rank: 3,
+      address: '0x1111111111111111111111111111111111111111',
+      network: 'evm'
+    },
+    {
+      id: 4,
+      name: 'AlphaSeeker',
+      socialName: '@alpha_seek',
+      totalValue: 980000,
+      performance: 28.7,
+      rank: 4,
+      address: 'So1anaAddressAlphaSeeker',
+      network: 'solana'
+    },
+    {
+      id: 5,
+      name: 'CryptoNinja',
+      socialName: '@crypto_ninja',
+      totalValue: 750000,
+      performance: 23.4,
+      rank: 5,
+      address: 'So1anaAddressCryptoNinja',
+      network: 'solana'
+    },
   ];
+  
+  // Filter the wallets based on the active wallet type (evm or solana)
+  const filteredWallets = topWallets.filter(wallet => wallet.network === activeWalletType);
   
   // Active prediction market data
   const activePredictions = [
@@ -59,6 +109,8 @@ export default function WalletPredictionMarketPage() {
     totalBetsValue: activePredictions.reduce((sum, prediction) => sum + prediction.totalBets, 0) + 
                    completedPredictions.reduce((sum, prediction) => sum + prediction.totalBets, 0)
   };
+  
+  const router = useRouter();
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black relative overflow-x-hidden">
@@ -151,6 +203,30 @@ export default function WalletPredictionMarketPage() {
               <h2 className="text-xl font-bold text-white">Wallet Leaderboard</h2>
             </div>
             
+            {/* New tabs for EVM and Solana wallets */}
+            <div className="flex space-x-8 mb-4">
+              <button
+                onClick={() => setActiveWalletType('evm')}
+                className={`py-2 px-4 font-medium text-base whitespace-nowrap transition-colors ${
+                  activeWalletType === 'evm'
+                    ? 'text-fluid-primary border-b-2 border-fluid-primary'
+                    : 'text-white/60 hover:text-white/90'
+                }`}
+              >
+                EVM
+              </button>
+              <button
+                onClick={() => setActiveWalletType('solana')}
+                className={`py-2 px-4 font-medium text-base whitespace-nowrap transition-colors ${
+                  activeWalletType === 'solana'
+                    ? 'text-fluid-primary border-b-2 border-fluid-primary'
+                    : 'text-white/60 hover:text-white/90'
+                }`}
+              >
+                Solana
+              </button>
+            </div>
+
             <div className="bg-gray-800/30 rounded-xl overflow-hidden backdrop-blur-sm border border-white/5">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -163,8 +239,12 @@ export default function WalletPredictionMarketPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topWallets.map((wallet) => (
-                      <tr key={wallet.id} className="border-b border-white/10 hover:bg-white/5">
+                    {filteredWallets.map((wallet) => (
+                      <tr
+                        key={wallet.id}
+                        onClick={() => router.push(`/wallet-prediction/${wallet.address}`)}
+                        className="cursor-pointer hover:bg-white/5"
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                           {wallet.socialName}
                         </td>
