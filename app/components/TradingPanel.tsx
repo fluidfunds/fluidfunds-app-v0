@@ -66,7 +66,7 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
         return BigInt(LTCBalance?.toString() ?? '0');
       case 'ETH':
         return BigInt(ETHBalance?.toString() ?? '0');
-      case 'BTC':
+      case ' BTC':
         return BigInt(BTCBalance?.toString() ?? '0');
       case 'AAVE':
         return BigInt(AAVEBalance?.toString() ?? '0');

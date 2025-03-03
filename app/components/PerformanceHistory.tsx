@@ -171,12 +171,22 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       token.contract_ticker_symbol === 'USDCx' || 
       token.contract_ticker_symbol === 'fUSDCx'
     );
-    
+   
     const usdcxBalance = usdcxToken 
       ? parseFloat(usdcxToken.balance) / Math.pow(10, usdcxToken.contract_decimals)
       : 0;
 
     console.log('USDCx balance for avg price calculation:', usdcxBalance);
+
+    const btcToken = tokenBalances.find(token => 
+      token.contract_ticker_symbol === 'BTC' 
+    );
+    const btcBalance = btcToken 
+      ? parseFloat(btcToken.balance) / Math.pow(10, btcToken.contract_decimals)
+      : 0;
+
+      console.log('test BTC balance for avg price calculation:', btcBalance);
+
 
     // Filter out invalid tokens and those with zero balance
     const validTokens = tokenBalances.filter(token => {
@@ -195,7 +205,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
     // Map token balances to Asset format
     const portfolioAssets = validTokens.map(token => {
-      const symbol = token.contract_ticker_symbol || 'Unknown';
+      const symbol = token.contract_ticker_symbol 
       const name = token.contract_name || symbol;
       const balance = parseFloat(token.balance) / Math.pow(10, token.contract_decimals);
       const price = token.quote_rate || DEFAULT_TOKEN_PRICES[symbol] || 0;
