@@ -40,7 +40,7 @@ const DEFAULT_TOKEN_PRICES: { [key: string]: number } = {
   'ETH': 2500.00,
   'DAIx': 1.01,
   'USDCx': 1.00,
-  'BTC': 1.00,
+  'BTC': 87000,
   'USDC': 1.00,
   'DAI': 1.01
 };
