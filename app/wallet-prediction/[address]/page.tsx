@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
@@ -55,9 +55,9 @@ interface Holding {
   change: number;
 }
 
-export default function WalletDetailPage({ params }: { params: { address: string } }) {
+export default function WalletDetailPage() {
   const router = useRouter();
-  const { address } = params;
+  const { address } = useParams() as { address: string };
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
 
@@ -65,8 +65,6 @@ export default function WalletDetailPage({ params }: { params: { address: string
     // Simulate fetching wallet data
     const fetchWalletData = async (): Promise<void> => {
       try {
-        // This would be an API call in a real application
-        // For now, we'll create mock data
         const mockWallet: WalletData = {
           id: 1,
           name: "CryptoWhale",
@@ -99,7 +97,7 @@ export default function WalletDetailPage({ params }: { params: { address: string
             { name: "Compound", symbol: "COMP", amount: 750, value: 60000, change: -0.8 }
           ]
         };
-        
+
         // Simulate network delay
         setTimeout(() => {
           setWalletData(mockWallet);
@@ -119,13 +117,12 @@ export default function WalletDetailPage({ params }: { params: { address: string
       await navigator.clipboard.writeText(text);
       toast.success('Address copied to clipboard');
     } catch (err) {
-        console.log(err);
+      console.log(err);
       toast.error('Failed to copy address');
     }
   };
 
   const shareProfile = () => {
-    // In a real application, this would launch a share dialog or copy a link
     toast.success('Share link copied to clipboard');
   };
 
