@@ -7,6 +7,17 @@ import { TokenSelect } from './TokenSelect';
 import { AVAILABLE_TOKENS, type Token } from '@/app/types/trading';
 import { toast } from 'sonner';
 
+// Add token price mapping at the top of your file
+const TOKEN_PRICES: Record<string, number> = {
+  'fUSDC': 1.00,
+  'fDAI': 1.01,
+  'LTC': 91.9987,
+  'ETH': 2239.96,
+  'BTC': 101879.00,
+  'AAVE': 31.9997,
+  'DOGE': 0.36996
+};
+
 interface TradingPanelProps {
   fundAddress: Address;
 }
@@ -66,7 +77,7 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
         return BigInt(LTCBalance?.toString() ?? '0');
       case 'ETH':
         return BigInt(ETHBalance?.toString() ?? '0');
-      case ' BTC':
+      case 'BTC':
         return BigInt(BTCBalance?.toString() ?? '0');
       case 'AAVE':
         return BigInt(AAVEBalance?.toString() ?? '0');
@@ -83,6 +94,21 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
 
   const handleTokenOutChange = (token: Token | null) => {
     setTokenOut(token);
+  };
+
+  // Calculate estimated output amount based on token prices
+  const calculateEstimatedOutput = (): string => {
+    if (!amount || !tokenIn || !tokenOut) return '';
+    
+    // Get token prices
+    const inputPrice = TOKEN_PRICES[tokenIn.symbol] || 1;
+    const outputPrice = TOKEN_PRICES[tokenOut.symbol] || 1;
+    
+    // Calculate based on price ratio with 0.5% slippage
+    const inputAmount = parseFloat(amount);
+    const estimatedOutput = (inputAmount * inputPrice / outputPrice) * 0.995;
+    
+    return estimatedOutput.toFixed(6);
   };
 
   const handleSwap = async () => {
@@ -178,6 +204,13 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
           <ArrowUpDown className="w-5 h-5 text-white/60" />
         </button>
 
+        {/* Add this between the input and output fields */}
+        {tokenIn && tokenOut && (
+          <div className="text-center text-xs text-white/60 py-1">
+            1 {tokenIn.symbol} = {(TOKEN_PRICES[tokenIn.symbol] / TOKEN_PRICES[tokenOut.symbol]).toFixed(6)} {tokenOut.symbol}
+          </div>
+        )}
+
         {/* Output Token */}
         <div className="space-y-2">
           <label className="text-sm text-white/60">To (estimated)</label>
@@ -185,7 +218,7 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
             <div className="flex-1">
               <input
                 type="text"
-                value={amount ? (Number(amount) * 0.98).toFixed(6) : ''}
+                value={calculateEstimatedOutput()}
                 disabled
                 placeholder="0.0"
                 className="w-full bg-transparent text-white outline-none"

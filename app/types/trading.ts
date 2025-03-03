@@ -8,12 +8,12 @@ export interface Token {
 
 export const AVAILABLE_TOKENS = [
   {
-    symbol: 'fUSDCx',
+    symbol: 'fUSDC',
     address: '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db' as Address,
     decimals: 18
   },
   {
-    symbol: 'fDAIx',
+    symbol: 'fDAI',
     address: '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c' as Address,
     decimals: 18
   },

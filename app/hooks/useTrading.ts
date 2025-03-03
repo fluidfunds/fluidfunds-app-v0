@@ -4,8 +4,8 @@ import { parseEther, type Address } from 'viem';
 import { useWriteContract } from 'wagmi';
 import { SUPERFLUID_FLOW_ABI, FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
 
-const USDCX_ADDRESS = '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db' as const;
-const DAIX_ADDRESS = '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c' as const;
+const USDC_ADDRESS = '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db' as const;
+const DAI_ADDRESS = '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c' as const;
 const LTC_ADDRESS = '0xB2f89CabbaF106D0cA10302D10A6d4b1734d5009' as const;
 const ETH_ADDRESS = '0xC0341325A034516C4146ef496A768De1850d09f5' as const;
 const BTC_ADDRESS = '0xbEc5068ace31Df3b6342450689d030716FdDA961' as const;
@@ -164,15 +164,15 @@ export const useTrading = (fundAddress: Address) => {
   return {
     swap,
     isLoading: isSwapping || isPending || isLoadingSwaps,
-    USDCxBalance: getLatestBalance(USDCX_ADDRESS),
-    DAIxBalance: getLatestBalance(DAIX_ADDRESS),
+    USDCxBalance: getLatestBalance(USDC_ADDRESS),
+    DAIxBalance: getLatestBalance(DAI_ADDRESS),
     LTCBalance: getLatestBalance(LTC_ADDRESS),
     ETHBalance: getLatestBalance(ETH_ADDRESS),
     BTCBalance: getLatestBalance(BTC_ADDRESS),
     AAVEBalance: getLatestBalance(AAVE_ADDRESS),
     DOGEBalance: getLatestBalance(DOGE_ADDRESS),
-    USDCX_ADDRESS,
-    DAIX_ADDRESS,
+    USDC_ADDRESS,
+    DAI_ADDRESS,
     LTC_ADDRESS,
     ETH_ADDRESS,
     BTC_ADDRESS,
