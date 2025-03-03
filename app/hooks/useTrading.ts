@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { parseEther, type Address } from 'viem';
 import { useWriteContract } from 'wagmi';
-import { TRADE_EXECUTOR_ABI, FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
+import { SUPERFLUID_FLOW_ABI, FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
 
 const USDCX_ADDRESS = '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db' as const;
 const DAIX_ADDRESS = '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c' as const;
@@ -113,8 +113,6 @@ export const useTrading = (fundAddress: Address) => {
     tokenIn,
     tokenOut,
     amountIn,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    poolFee
   }: SwapParams) => {
     if (!tokenIn || !tokenOut || !amountIn) {
       throw new Error('Missing required parameters for swap');
@@ -127,22 +125,22 @@ export const useTrading = (fundAddress: Address) => {
       const tokenOutAddress = tokenOut.toLowerCase() as `0x${string}`;
 
       const params = {
-        abi: TRADE_EXECUTOR_ABI,
+        abi: SUPERFLUID_FLOW_ABI,
         address: fundAddress,
-        functionName: 'executeTrade', // Fixed function name
+        functionName: 'executeTrade', // Adjust this if your FluidFunds contract uses a different name
         args: [
-          tokenInAddress,         // tokenIn: 0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db
-          tokenOutAddress,        // tokenOut: 0x9Ce2062b085A2268E8d769fFC040f6692315fd2c
-          BigInt(amountIn),     
-          0n,                    // minAmountOut: 0 for testnet
-          3000                   // poolFee: 3000 (0.3%) as number
+          tokenInAddress,         // tokenIn address
+          tokenOutAddress,        // tokenOut address
+          amountIn,
+          0n,                     // minAmountOut: 0 for testnet
+          3000                    // poolFee: 3000 (0.3%) as number
         ]
       } as const;
 
       console.log('Executing trade with params:', {
         tokenIn: tokenInAddress,
         tokenOut: tokenOutAddress,
-        amountIn: params.args[2].toString(),
+        amountIn: BigInt(amountIn),
         minAmountOut: '0',
         poolFee: '3000',
         fundAddress
