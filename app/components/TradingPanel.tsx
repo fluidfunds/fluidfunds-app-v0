@@ -7,7 +7,6 @@ import { TokenSelect } from './TokenSelect';
 import { AVAILABLE_TOKENS, type Token } from '@/app/types/trading';
 import { toast } from 'sonner';
 
-
 interface TradingPanelProps {
   fundAddress: Address;
 }
@@ -40,8 +39,16 @@ const parseTokenAmount = (amount: string, decimals: number): bigint => {
 };
 
 export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
-  // @ts-expect-error names
-  const { swap, fUSDCBalance, fDAIBalance } = useTrading(fundAddress);
+  const {
+    swap,
+    USDCxBalance,
+    DAIxBalance,
+    LTCBalance,
+    ETHBalance,
+    BTCBalance,
+    AAVEBalance,
+    DOGEBalance,
+  } = useTrading(fundAddress);
   const [amount, setAmount] = useState<string>('');
   const [tokenIn, setTokenIn] = useState<Token | null>(null);
   const [tokenOut, setTokenOut] = useState<Token | null>(null);
@@ -52,9 +59,19 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
     
     switch (token.symbol) {
       case 'fUSDCx':
-        return BigInt(fUSDCBalance?.toString() ?? '0');
+        return BigInt(USDCxBalance?.toString() ?? '0');
       case 'fDAIx':
-        return BigInt(fDAIBalance?.toString() ?? '0');
+        return BigInt(DAIxBalance?.toString() ?? '0');
+      case 'LTC':
+        return BigInt(LTCBalance?.toString() ?? '0');
+      case 'ETH':
+        return BigInt(ETHBalance?.toString() ?? '0');
+      case 'BTC':
+        return BigInt(BTCBalance?.toString() ?? '0');
+      case 'AAVE':
+        return BigInt(AAVEBalance?.toString() ?? '0');
+      case 'DOGE':
+        return BigInt(DOGEBalance?.toString() ?? '0');
       default:
         return 0n;
     }
@@ -78,7 +95,6 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
       setIsSwapping(true);
       
       // Convert amount to proper base units
-      // @ts-expect-error tokenIn may be null
       const decimals = tokenIn.decimals || 18;
       const amountInBaseUnits = parseTokenAmount(amount, decimals);
       
@@ -90,11 +106,11 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
 
       // Prepare swap parameters for executeTrade
       const swapParams = {
-        tokenIn: '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db',  // fUSDCx address
-        tokenOut: '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c', // fDaix address
-        amountIn: amountInBaseUnits,                            // Amount in base units
-        minAmountOut: 0n,                                       // 0 for testnet
-        poolFee: 3000                                          // Fixed 0.3% fee
+        tokenIn: tokenIn.address,
+        tokenOut: tokenOut.address,
+        amountIn: amountInBaseUnits,
+        minAmountOut: 0n,
+        poolFee: 3000
       };
 
       // Log the exact parameters being sent to contract
@@ -105,8 +121,6 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
         minAmountOut: '0',
         poolFee: swapParams.poolFee
       });
-
-      //@ts-expect-error tokenIn may be null
 
       const txHash = await swap(swapParams);
       toast.success(`Trade transaction submitted! Hash: ${txHash}`);

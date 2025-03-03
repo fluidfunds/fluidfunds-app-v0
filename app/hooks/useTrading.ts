@@ -6,6 +6,11 @@ import { SUPERFLUID_FLOW_ABI, FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/cont
 
 const USDCX_ADDRESS = '0xe72f289584eDA2bE69Cfe487f4638F09bAc920Db' as const;
 const DAIX_ADDRESS = '0x9Ce2062b085A2268E8d769fFC040f6692315fd2c' as const;
+const LTC_ADDRESS = '0xB2f89CabbaF106D0cA10302D10A6d4b1734d5009' as const;
+const ETH_ADDRESS = '0xC0341325A034516C4146ef496A768De1850d09f5' as const;
+const BTC_ADDRESS = '0xbEc5068ace31Df3b6342450689d030716FdDA961' as const;
+const AAVE_ADDRESS = '0x8CAA1B86c6aa7B4c8B733515ad1A9a2Ecf8A9887' as const;
+const DOGE_ADDRESS = '0xD3443DdcE8a43626fA54f0a3aeE81451D4e1a6b3' as const;
 
 interface SwapExecuted {
   id: string;
@@ -161,8 +166,18 @@ export const useTrading = (fundAddress: Address) => {
     isLoading: isSwapping || isPending || isLoadingSwaps,
     USDCxBalance: getLatestBalance(USDCX_ADDRESS),
     DAIxBalance: getLatestBalance(DAIX_ADDRESS),
+    LTCBalance: getLatestBalance(LTC_ADDRESS),
+    ETHBalance: getLatestBalance(ETH_ADDRESS),
+    BTCBalance: getLatestBalance(BTC_ADDRESS),
+    AAVEBalance: getLatestBalance(AAVE_ADDRESS),
+    DOGEBalance: getLatestBalance(DOGE_ADDRESS),
     USDCX_ADDRESS,
     DAIX_ADDRESS,
+    LTC_ADDRESS,
+    ETH_ADDRESS,
+    BTC_ADDRESS,
+    AAVE_ADDRESS,
+    DOGE_ADDRESS,
     swaps,
     error,
   };
