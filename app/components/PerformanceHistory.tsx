@@ -29,6 +29,7 @@ const TOKEN_COLORS: { [key: string]: string } = {
   'SEP': '#62AEEA',
   'WBTC': '#F7931A',
   'ARB': '#28A0F0',
+  '0xbec5068ace31df3b6342450689d030716fdda961': '#F7931A', // BTC color for this specific address
 };
 
 // Add default prices for our tokens
@@ -156,8 +157,8 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       const balance = parseFloat(t.balance) / Math.pow(10, t.contract_decimals);
       const price = t.quote_rate || DEFAULT_TOKEN_PRICES[t.contract_ticker_symbol] || 0;
       return {
-        symbol: t.contract_ticker_symbol,
-        name: t.contract_name,
+        symbol: t.contract_ticker_symbol || 'Unknown',
+        name: t.contract_name || t.contract_ticker_symbol || 'Unknown',
         balance,
         price,
         value: balance * price
@@ -205,8 +206,15 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
     // Map token balances to Asset format
     const portfolioAssets = validTokens.map(token => {
-      const symbol = token.contract_ticker_symbol 
-      const name = token.contract_name || symbol;
+      let symbol = token.contract_ticker_symbol || 'Unknown';
+      let name = token.contract_name || symbol;
+      
+      // Manual override for known addresses with missing metadata
+      if (token.contract_address.toLowerCase() === '0xbec5068ace31df3b6342450689d030716fdda961') {
+        symbol = 'BTC';
+        name = 'Bitcoin';
+      }
+      
       const balance = parseFloat(token.balance) / Math.pow(10, token.contract_decimals);
       const price = token.quote_rate || DEFAULT_TOKEN_PRICES[symbol] || 0;
       const value = balance * price;
@@ -222,7 +230,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
         : (balance > 0 ? usdcxBalance / balance : price);
       
       // Use TOKEN_COLORS if available, otherwise generate a color
-      const color = TOKEN_COLORS[symbol] || `hsl(${Math.abs(symbol.split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
+      const color = TOKEN_COLORS[symbol] || `hsl(${Math.abs((symbol || 'Unknown').split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
       
       // Calculate price change percentage based on trade history
       const priceChange = avgPurchasePrice > 0 
