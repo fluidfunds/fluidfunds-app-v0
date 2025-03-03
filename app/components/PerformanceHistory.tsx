@@ -40,7 +40,7 @@ const DEFAULT_TOKEN_PRICES: { [key: string]: number } = {
   'ETH': 2500.00,
   'DAIx': 1.01,
   'USDCx': 1.00,
-  'BTC': 89284,
+  'BTC': 1.00,
   'USDC': 1.00,
   'DAI': 1.01
 };
@@ -60,6 +60,20 @@ const verifyApiKey = () => {
   }
   
   return true;
+};
+
+// Add this helper function at the top of your file
+const formatTokenBalance = (balance: number): string => {
+  if (!isFinite(balance) || isNaN(balance)) return '0';
+  if (balance > 1_000_000_000) {
+    return `${(balance / 1_000_000_000).toFixed(2)}B`;
+  } else if (balance > 1_000_000) {
+    return `${(balance / 1_000_000).toFixed(2)}M`;
+  } else if (balance > 1_000) {
+    return `${(balance / 1_000).toFixed(2)}K`;
+  } else {
+    return balance.toLocaleString(undefined, {maximumFractionDigits: 2});
+  }
 };
 
 // Define Asset interface for portfolio display
@@ -208,17 +222,27 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
     const portfolioAssets = validTokens.map(token => {
       let symbol = token.contract_ticker_symbol || 'Unknown';
       let name = token.contract_name || symbol;
+      let decimals = token.contract_decimals;
       
       // Manual override for known addresses with missing metadata
       if (token.contract_address.toLowerCase() === '0xbec5068ace31df3b6342450689d030716fdda961') {
         symbol = 'BTC';
-        name = 'Bitcoin';
+        name = 'Test Bitcoin';
+        // Force 8 decimals for BTC specifically (standard for Bitcoin)
+        decimals = 8;
       }
       
-      const balance = parseFloat(token.balance) / Math.pow(10, token.contract_decimals);
+      const balance = parseFloat(token.balance) / Math.pow(10, decimals);
+      // Cap balance to a reasonable number if it's extremely large
+      const cappedBalance = isFinite(balance) && balance < 1_000_000_000 ? balance : 0;
+      
       const price = token.quote_rate || DEFAULT_TOKEN_PRICES[symbol] || 0;
-      const value = balance * price;
-      const allocation = portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
+      const value = cappedBalance * price;
+      
+      // Raw allocation before capping
+      const rawAllocation = portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
+      // Cap allocation to 100% maximum
+      const allocation = Math.min(rawAllocation, 100);
       
       // Get average purchase price from trade history if available
       const tokenKey = token.contract_address.toLowerCase();
@@ -227,15 +251,18 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       // Use trade history price if available, otherwise fallback to previous calculation
       const avgPurchasePrice = tradeHistoryPrice !== undefined 
         ? tradeHistoryPrice
-        : (balance > 0 ? usdcxBalance / balance : price);
+        : (cappedBalance > 0 ? usdcxBalance / cappedBalance : price);
       
       // Use TOKEN_COLORS if available, otherwise generate a color
       const color = TOKEN_COLORS[symbol] || `hsl(${Math.abs((symbol || 'Unknown').split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
       
       // Calculate price change percentage based on trade history
-      const priceChange = avgPurchasePrice > 0 
+      const rawPriceChange = avgPurchasePrice > 0 
         ? ((price - avgPurchasePrice) / avgPurchasePrice) * 100 
         : 0;
+      
+      // Cap price change to reasonable values
+      const priceChange = Math.min(Math.max(rawPriceChange, -9999), 9999);
 
       return {
         id: token.contract_address,
@@ -243,8 +270,8 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
         symbol,
         price,
         avgPurchasePrice,
-        usdcxSpent: averagePrices[tokenKey]?.totalSpent || usdcxBalance, // Use trade data if available
-        balance,
+        usdcxSpent: averagePrices[tokenKey]?.totalSpent || usdcxBalance,
+        balance: cappedBalance,
         value,
         allocation,
         color,
@@ -789,12 +816,12 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           <div className="flex flex-col gap-1">
                             <div className="w-full bg-white/10 rounded-full h-2">
                               <div className="h-2 rounded-full" style={{ 
-                                width: `${asset.allocation}%`,
+                                width: `${Math.min(asset.allocation, 100)}%`,
                                 backgroundColor: asset.color
                               }}></div>
                             </div>
                             <span className="text-xs text-white/70 text-center">
-                              {asset.allocation.toFixed(2)}%
+                              {Math.min(asset.allocation, 100).toFixed(2)}%
                             </span>
                           </div>
                         </td>
@@ -806,7 +833,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           }).format(asset.value)}
                               {asset.balance > 0 && (
                                 <div className="text-xs text-white/50 mt-1">
-                                  {asset.balance.toLocaleString(undefined, {maximumFractionDigits: 2})} tokens
+                                  {formatTokenBalance(asset.balance)} tokens
                                 </div>
                               )}
                         </td>
