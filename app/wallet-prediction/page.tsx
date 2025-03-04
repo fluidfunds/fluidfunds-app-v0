@@ -1,15 +1,59 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trophy, Activity, BarChart2, Zap, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowLeft, Trophy, Activity, BarChart2, Zap, TrendingUp, Wallet, TrendingDown } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import { useRouter } from 'next/navigation';
+import { fetchWalletDataForProfile, WalletData } from '@/app/utils/getWalletData';
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 export default function WalletPredictionMarketPage() {
   const [activeTab, setActiveTab] = useState('active');
   const [activeWalletType, setActiveWalletType] = useState('evm');
-  
-  // Sample data for the wallet leaderboard with new address and network fields
+  const [trackedWallets, setTrackedWallets] = useState<WalletData[]>([]);
+  const router = useRouter();
+
+  // Each tracked profile includes a socialName and one or more addresses.
+  const trackedWalletsData = [
+    { socialName: "basefreakz", addresses: ["0xcde9f00116bffe9852b2cd4295446ae5fc51ad0a"] },
+    { socialName: "brycekrispy.eth", addresses: ["0x8ce92c44b81d6b7366a66f25bbf078bfd78829d2", "0xcdb53d17f1b829030b4fe0e3e106c2d4db33ac2a"] },
+    { socialName: "bleu.eth", addresses: ["0xc4239467a62edaad4a098235a6754579e6662566", "0x38a0d87bdeac77ac859ac910a588cf80a05d854d", "0xe9dadd9ded105d67e6cb7aadc48be0c2d45df652"] },
+    { socialName: "maretus", addresses: ["0x59140f80e6146d3e23a3f44c3c47c9164e4b4a98", "0x2225349cdf7f16156d7e4fd5eef774fef180cec1", "0xd9c0e850a086aa5febd40f2668c5d7e15d7d74a2", "0xcb69c793478a7355178979ae0be453bf61c378ee"] },
+    { socialName: "capybara", addresses: ["0xb77771e01bcb358f9468df78ddcb9f0cb062a772"] },
+    { socialName: "cojo.eth", addresses: ["0xe943ca883ef3294e0fc55a1a14591abead1b5927", "0xcaaa26c5498de67466e6823ef69718feb04c2952"] },
+    { socialName: "renatov.eth", addresses: ["0xd47cc86868092fb56f56d78919c207ecf7593060", "0x6046d412b45dace6c963c7c3c892ad951ec97e57"] },
+    { socialName: "tylerfoust.eth", addresses: ["0x0b001c532a98b637f5b66c55f02fc9c6645e54ca", "0x3d335600833f6d4075184ea5350a3f37f3b82ce1"] },
+  ];
+
+  // Fetch detailed wallet data for each tracked wallet (similar to your detail page)
+  useEffect(() => {
+    async function fetchTrackedWallets() {
+      const results = await Promise.all(
+        trackedWalletsData.map(async (profile) => {
+          // fetchWalletDataForProfile returns an object with totalValue, performance, etc.
+          return await fetchWalletDataForProfile(profile);
+        })
+      );
+
+      // Sort by totalValue (descending) and assign rank
+      results.sort((a, b) => b.totalValue - a.totalValue);
+      results.forEach((wallet, index) => (wallet.rank = index + 1));
+      setTrackedWallets(results);
+    }
+    fetchTrackedWallets();
+  }, [trackedWalletsData]);
+
+  // Use the live tracked data for EVM wallets if available;
+  // otherwise fall back to your filtered sample data.
+  // (For Solana wallets, you can build similar logic.)
   const topWallets = [
     {
       id: 1,
@@ -17,6 +61,7 @@ export default function WalletPredictionMarketPage() {
       socialName: '@whale_trader',
       totalValue: 2450000,
       performance: 42.8,
+      last30dPerformance: 156.4,
       rank: 1,
       address: '0x1234567890abcdef1234567890abcdef12345678',
       network: 'evm'
@@ -27,6 +72,7 @@ export default function WalletPredictionMarketPage() {
       socialName: '@defi_king',
       totalValue: 1870000,
       performance: 36.5,
+      last30dPerformance: 128.9,
       rank: 2,
       address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef',
       network: 'evm'
@@ -37,6 +83,7 @@ export default function WalletPredictionMarketPage() {
       socialName: '@token_master',
       totalValue: 1250000,
       performance: 31.2,
+      last30dPerformance: 98.5,
       rank: 3,
       address: '0x1111111111111111111111111111111111111111',
       network: 'evm'
@@ -47,6 +94,7 @@ export default function WalletPredictionMarketPage() {
       socialName: '@alpha_seek',
       totalValue: 980000,
       performance: 28.7,
+      last30dPerformance: 82.3,
       rank: 4,
       address: 'So1anaAddressAlphaSeeker',
       network: 'solana'
@@ -57,14 +105,17 @@ export default function WalletPredictionMarketPage() {
       socialName: '@crypto_ninja',
       totalValue: 750000,
       performance: 23.4,
+      last30dPerformance: 65.8,
       rank: 5,
       address: 'So1anaAddressCryptoNinja',
       network: 'solana'
     },
   ];
-  
-  // Filter the wallets based on the active wallet type (evm or solana)
   const filteredWallets = topWallets.filter(wallet => wallet.network === activeWalletType);
+  const displayedWallets =
+    activeWalletType === 'evm' && trackedWallets.length > 0
+      ? trackedWallets
+      : filteredWallets;
   
   // Active prediction market data
   const activePredictions = [
@@ -104,13 +155,11 @@ export default function WalletPredictionMarketPage() {
   
   // Statistics for the top cards
   const stats = {
-    topPerformers: topWallets.length,
+    topPerformers: displayedWallets.length,
     activePredictions: activePredictions.length,
     totalBetsValue: activePredictions.reduce((sum, prediction) => sum + prediction.totalBets, 0) + 
                    completedPredictions.reduce((sum, prediction) => sum + prediction.totalBets, 0)
   };
-  
-  const router = useRouter();
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black relative overflow-x-hidden">
@@ -203,7 +252,7 @@ export default function WalletPredictionMarketPage() {
               <h2 className="text-xl font-bold text-white">Wallet Leaderboard</h2>
             </div>
             
-            {/* New tabs for EVM and Solana wallets */}
+            {/* Tabs for EVM and Solana wallets */}
             <div className="flex space-x-8 mb-4">
               <button
                 onClick={() => setActiveWalletType('evm')}
@@ -234,19 +283,27 @@ export default function WalletPredictionMarketPage() {
                     <tr className="border-b border-white/10">
                       <th className="px-6 py-4 text-left text-sm font-medium text-white/70">Social Name</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-white/70">Total Value</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-white/70">Performance (24h)</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-white/70">Performance (30d)</th>
                       <th className="px-6 py-4 text-left text-sm font-medium text-white/70">Rank</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredWallets.map((wallet) => (
+                    {displayedWallets.map((wallet) => (
                       <tr
-                        key={wallet.id}
+                        key={wallet.address}
                         onClick={() => router.push(`/wallet-prediction/${wallet.address}`)}
                         className="cursor-pointer hover:bg-white/5"
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {wallet.socialName}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <a
+                            href={`https://warpcast.com/${wallet.socialName}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-white underline"
+                          >
+                            {wallet.socialName}
+                          </a>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                           {formatCurrency(wallet.totalValue)}
@@ -254,16 +311,32 @@ export default function WalletPredictionMarketPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center text-fluid-primary">
                             <TrendingUp className="w-4 h-4 mr-1" />
-                            <span>+{wallet.performance.toFixed(2)}%</span>
+                            <span>{wallet.performance.toFixed(2)}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
-                              wallet.rank === 1 ? 'bg-amber-500/20 text-amber-400' : 
-                              wallet.rank === 2 ? 'bg-gray-400/20 text-gray-400' :
-                              wallet.rank === 3 ? 'bg-amber-700/20 text-amber-700' : 'bg-white/10 text-white/70'
-                            }`}>
+                            {wallet.last30dPerformance >= 0 ? (
+                              <TrendingUp className="w-4 h-4 mr-1 text-green-400" />
+                            ) : (
+                              <TrendingDown className="w-4 h-4 mr-1 text-red-400" />
+                            )}
+                            <span>{wallet.last30dPerformance.toFixed(2)}%</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div
+                              className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${
+                                wallet.rank === 1
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : wallet.rank === 2
+                                    ? 'bg-gray-400/20 text-gray-400'
+                                    : wallet.rank === 3
+                                      ? 'bg-amber-700/20 text-amber-700'
+                                      : 'bg-white/10 text-white/70'
+                              }`}
+                            >
                               #{wallet.rank}
                             </div>
                           </div>
@@ -463,17 +536,7 @@ function PredictionCard({ prediction, isActive }: PredictionCardProps) {
     </div>
   );
 }
-
 // Helper functions
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value);
-}
-
 function getTimeRemaining(endTime: Date): string {
   const totalSeconds = Math.floor((endTime.getTime() - Date.now()) / 1000);
   

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import { toast } from 'sonner';
+// Import the Covalent API helper
+import {  getFundBalances, TokenBalance } from '@/app/utils/covalent';
 
 // Define types for walletData and holdings
 interface WalletData {
@@ -61,63 +63,85 @@ export default function WalletDetailPage() {
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
 
-  useEffect(() => {
-    // Simulate fetching wallet data
-    const fetchWalletData = async (): Promise<void> => {
-      try {
-        const mockWallet: WalletData = {
-          id: 1,
-          name: "CryptoWhale",
-          socialName: "@whale_trader",
-          address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-          chain: "Ethereum",
-          totalValue: 2450000,
-          performance: 42.8,
-          rank: 1,
-          tags: ["Top Trader", "DeFi Specialist", "NFT Collector"],
-          socialLinks: {
-            twitter: "https://x.com/whale_trader",
-            youtube: "https://youtube.com/c/cryptowhale"
-          },
-          followers: 45800,
-          performanceMetrics: {
-            dailyROI: 1.82,
-            weeklyROI: 12.74,
-            monthlyROI: 54.65,
-            maxDrawdown: -8.32,
-            sharpeRatio: 3.21,
-            winRate: 76
-          },
-          holdings: [
-            { name: "Ethereum", symbol: "ETH", amount: 425.75, value: 975000, change: 3.2 },
-            { name: "Bitcoin", symbol: "BTC", amount: 12.5, value: 780000, change: 1.8 },
-            { name: "Chainlink", symbol: "LINK", amount: 32500, value: 325000, change: 5.4 },
-            { name: "Uniswap", symbol: "UNI", amount: 28500, value: 185000, change: -1.2 },
-            { name: "Aave", symbol: "AAVE", amount: 1250, value: 125000, change: 2.7 },
-            { name: "Compound", symbol: "COMP", amount: 750, value: 60000, change: -0.8 }
-          ]
+  // Wrap fetchWalletData in useCallback
+  const fetchWalletData = useCallback(async (): Promise<void> => {
+    try {
+      if (!address) return;
+      
+      // Specify the chain ID
+      const chainId = '8453';
+      
+      
+      // 2. Get current token balances using getFundBalances
+      const currentTokenBalances = await getFundBalances(address, chainId);
+      
+      // Map current token balances to your holdings interface.
+      const currentHoldings = currentTokenBalances.map((token: TokenBalance) => {
+        // Calculate the amount using the token decimals
+        const tokenAmount = Number(token.balance) / Math.pow(10, token.contract_decimals);
+        return {
+          name: token.contract_name || token.contract_ticker_symbol || 'Unknown',
+          symbol: token.contract_ticker_symbol || 'UNK',
+          amount: tokenAmount,
+          value: token.quote || 0,
+          change: 0, // You could add logic here to calculate a 24h change if available
         };
-
-        // Simulate network delay
-        setTimeout(() => {
-          setWalletData(mockWallet);
-          setLoading(false);
-        }, 800);
-      } catch (error) {
-        console.error("Error fetching wallet data:", error);
-        setLoading(false);
-      }
-    };
-
-    fetchWalletData();
+      });
+      
+      // Option: If you want to display the current balances instead of the historical ones,
+      // you can set holdings to the currentHoldings. Alternatively, you could merge data from both:
+      const holdings = currentHoldings;
+      
+      // Recalculate total value based on current holdings if needed.
+      const totalValue = holdings.reduce((sum: number, holding: Holding) => sum + holding.value, 0);
+      
+      // Build the wallet object.
+      const wallet = {
+        id: 0,
+        name: `Wallet ${address.substring(0, 6)}`,
+        socialName: '',
+        address,
+        chain: chainId,
+        totalValue,
+        performance: 0, // Performance metrics can be updated later.
+        rank: 0,
+        tags: [],
+        socialLinks: {
+          twitter: '',
+          youtube: ''
+        },
+        followers: 0,
+        performanceMetrics: {
+          dailyROI: 0,
+          weeklyROI: 0,
+          monthlyROI: 0,
+          maxDrawdown: 0,
+          sharpeRatio: 0,
+          winRate: 0,
+        },
+        holdings,
+      };
+      
+      setWalletData(wallet);
+    } catch (error) {
+      console.error("Error fetching wallet data from Covalent API:", error);
+      // Optionally, display an error UI or toast message here.
+    } finally {
+      setLoading(false);
+    }
   }, [address]);
+
+  useEffect(() => {
+    if (!address) return;
+    fetchWalletData();
+  }, [address, fetchWalletData]);
 
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Address copied to clipboard');
     } catch (err) {
-      console.log(err);
+      console.error(err);
       toast.error('Failed to copy address');
     }
   };
@@ -263,7 +287,7 @@ export default function WalletDetailPage() {
               
               {/* Right side: Individual Metric Cards */}
               <div className="flex flex-col gap-4 h-full justify-between">
-                <div className="grid grid-cols-3 gap-4 h-full">
+                <div className="grid grid-cols-4 gap-4 h-full">
                   {/* Rank Card */}
                   <div className="bg-white/5 px-5 py-6 rounded-xl text-center h-full flex flex-col justify-center">
                     <p className="text-white/70 text-sm">Rank</p>
@@ -272,13 +296,27 @@ export default function WalletDetailPage() {
                       <Award className="w-5 h-5 text-amber-400 ml-2" />
                     </div>
                   </div>
-                  {/* Performance Card */}
+                  {/* 24h Performance Card */}
                   <div className="bg-white/5 px-5 py-6 rounded-xl text-center h-full flex flex-col justify-center">
-                    <p className="text-white/70 text-sm">Performance</p>
+                    <p className="text-white/70 text-sm">Performance (24h)</p>
                     <div className="flex items-center justify-center mt-2">
                       <TrendingUp className="w-5 h-5 text-fluid-primary mr-2" />
                       <span className="text-2xl font-bold text-white">
                         +{walletData?.performance.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                  {/* Last 30d Performance Card */}
+                  <div className="bg-white/5 px-5 py-6 rounded-xl text-center h-full flex flex-col justify-center">
+                    <p className="text-white/70 text-sm">Performance (30d)</p>
+                    <div className="flex items-center justify-center mt-2">
+                      {walletData?.performanceMetrics?.monthlyROI ? (
+                        <TrendingUp className="w-5 h-5 text-green-400 mr-2" />
+                      ) : (
+                        <TrendingDown className="w-5 h-5 text-red-400 mr-2" />
+                      )}
+                      <span className="text-2xl font-bold text-white">
+                        +{walletData?.performanceMetrics.monthlyROI.toFixed(2)}%
                       </span>
                     </div>
                   </div>
@@ -414,50 +452,69 @@ export default function WalletDetailPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-white/10">
-                        <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider">Asset</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">Amount</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">Value</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">24h Change</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-white/70 uppercase tracking-wider w-[200px]">
+                          Asset
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">
+                          Value
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-white/70 uppercase tracking-wider">
+                          24h Change
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {walletData?.holdings.map((asset: Holding, index: number) => (
-                        <tr 
-                          key={index} 
-                          className="border-b border-white/10 hover:bg-white/5 transition-colors"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center mr-3">
-                                <span className="text-xs font-medium">{asset.symbol.slice(0, 1)}</span>
+                      {walletData?.holdings
+                        .filter((asset: Holding) => asset.value !== 0)
+                        .map((asset: Holding, index: number) => (
+                          <tr
+                            key={index}
+                            className="border-b border-white/10 hover:bg-white/5 transition-colors"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap w-[200px]">
+                              <div className="flex items-center">
+                                <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center mr-3">
+                                  <span className="text-xs font-medium">{asset.symbol.slice(0, 1)}</span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-white">{asset.name}</div>
+                                  <div className="text-xs text-white/70">{asset.symbol}</div>
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-sm font-medium text-white">{asset.name}</div>
-                                <div className="text-xs text-white/70">{asset.symbol}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <div className="text-sm text-white">
+                                {asset.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="text-sm text-white">{asset.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}</div>
-                            <div className="text-xs text-white/70">{asset.symbol}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="text-sm font-medium text-white">{formatCurrency(asset.value)}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className={`text-sm font-medium flex items-center justify-end ${
-                              asset.change >= 0 ? 'text-green-400' : 'text-red-400'
-                            }`}>
-                              {asset.change >= 0 ? (
-                                <TrendingUp className="w-3 h-3 mr-1" />
-                              ) : (
-                                <TrendingDown className="w-3 h-3 mr-1" />
-                              )}
-                              <span>{asset.change >= 0 ? '+' : ''}{asset.change}%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                              <div className="text-xs text-white/70">{asset.symbol}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <div className="text-sm font-medium text-white">
+                                {formatCurrency(asset.value)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <div
+                                className={`text-sm font-medium flex items-center justify-end ${
+                                  asset.change >= 0 ? 'text-green-400' : 'text-red-400'
+                                }`}
+                              >
+                                {asset.change >= 0 ? (
+                                  <TrendingUp className="w-3 h-3 mr-1" />
+                                ) : (
+                                  <TrendingDown className="w-3 h-3 mr-1" />
+                                )}
+                                <span>
+                                  {asset.change >= 0 ? '+' : ''}
+                                  {asset.change}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
