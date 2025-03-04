@@ -69,30 +69,33 @@ const StreamCard = memo(({ displayBalance, dailyFlowRate }: { displayBalance: st
 StreamCard.displayName = 'StreamCard';
 
 // Create a separate FundTokensCard component - memoized
-const FundTokensCard = memo(() => (
-  <div className="bg-gradient-to-br from-slate-800/50 to-transparent rounded-xl p-4 backdrop-blur-sm 
-               border border-white/10 flex items-center">
-    <div className="bg-white/10 p-2 rounded-full mr-4 hidden sm:block">
-      <WalletCards className="w-4 h-4 text-white/70" />
+const FundTokensCard = memo(({ displayBalance, dailyFlowRate }: { displayBalance: string, dailyFlowRate: string }) => (
+  <div className="bg-gradient-to-br from-fluid-primary/10 to-transparent rounded-xl p-4 backdrop-blur-sm 
+               border border-fluid-primary/20 flex items-center hover:shadow-fluid-primary/10 transition-all duration-200">
+    <div className="bg-fluid-primary/20 p-2 rounded-full mr-4 hidden sm:block">
+      <ArrowDownUp className="w-4 h-4 text-fluid-primary" />
     </div>
     
     <div className="flex flex-col flex-1">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-white/90 font-medium text-sm sm:text-base">Fund Tokens</span>
-        <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full text-white/70">
-          Coming Soon
-        </span>
+        <span className="text-white/90 font-medium text-sm sm:text-base">Active Stream</span>
+        <div className="text-sm text-white/70 flex items-center">
+          <TrendingUp className="w-3.5 h-3.5 mr-1 text-fluid-primary" />
+          <span className="bg-fluid-primary/20 text-fluid-primary text-xs px-2 py-0.5 rounded-md">
+            {dailyFlowRate} TCPx/day
+          </span>
+        </div>
       </div>
       
-      <div className="text-2xl font-bold text-white/50">
-        - - -
+      <div className="text-2xl font-bold text-white">
+        {displayBalance} <span className="text-fluid-primary text-lg">TCPx</span>
       </div>
       
-      <div className="text-xs text-white/40">Fund Token Balance</div>
+      <div className="text-xs text-white/60">Total TCPx received</div>
       
-      {/* Progress Bar - static, no animation */}
-      <div className="relative h-1.5 bg-white/10 rounded-full overflow-hidden mt-3">
-        <div className="absolute inset-0 w-0 bg-white/20 rounded-full" />
+      {/* Animated Stream Indicator with separated animation component */}
+      <div className="relative h-1.5 bg-fluid-primary/10 rounded-full overflow-hidden mt-3">
+        <StreamAnimation />
       </div>
     </div>
   </div>
@@ -221,7 +224,7 @@ const InvestorDashboard = memo(({ fundAddress }: InvestorDashboardProps) => {
         <div className="flex flex-col space-y-3">
           {/* Use separated components with memoized props */}
           <StreamCard displayBalance={displayBalance} dailyFlowRate={dailyFlowRate} />
-          <FundTokensCard />
+          <FundTokensCard displayBalance={displayBalance} dailyFlowRate={dailyFlowRate} />
         </div>
       </div>
     );
