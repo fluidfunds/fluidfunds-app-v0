@@ -63,17 +63,44 @@ const verifyApiKey = () => {
 };
 
 // Add this helper function at the top of your file
-const formatTokenBalance = (balance: number): string => {
+const formatTokenBalance = (balance: number, symbol?: string): string => {
   if (!isFinite(balance) || isNaN(balance)) return '0';
-  if (balance > 1_000_000_000) {
+  
+  // Special handling for BTC and other low-decimal tokens
+  if (symbol === 'BTC' || balance < 0.01) {
+    return balance.toFixed(8); // Show up to 8 decimal places for very small numbers
+  }
+  
+  // For larger numbers, use the existing formatting
+  if (balance >= 1_000_000_000) {
     return `${(balance / 1_000_000_000).toFixed(2)}B`;
-  } else if (balance > 1_000_000) {
+  } else if (balance >= 1_000_000) {
     return `${(balance / 1_000_000).toFixed(2)}M`;
-  } else if (balance > 1_000) {
+  } else if (balance >= 1_000) {
     return `${(balance / 1_000).toFixed(2)}K`;
   } else {
-    return balance.toLocaleString(undefined, {maximumFractionDigits: 2});
+    // For numbers between 0.01 and 999
+    return balance.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 4
+    });
   }
+};
+
+// Add this helper function near the other formatting functions
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const formatPrice = (price: number, symbol: string): string => {
+  if (!isFinite(price) || isNaN(price)) return '$0.00';
+  
+  // Show more decimals for low-value tokens
+  const decimals = price < 1 ? 4 : 2;
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(price);
 };
 
 // Define Asset interface for portfolio display
@@ -772,20 +799,16 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                              {asset.avgPurchasePrice !== undefined ? 
-                                new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                                  minimumFractionDigits: asset.avgPurchasePrice < 1 ? 4 : 2,
-                                }).format(asset.avgPurchasePrice) : 
-                                "N/A"}
-                              {asset.avgPurchasePrice !== undefined && (
-                                <div className="text-xs text-white/50 mt-1">
-                                  {asset.usdcxSpent !== undefined && asset.balance > 0 
-                                    ? `Based on ${asset.usdcxSpent.toFixed(2)} USDCx spent`
-                                    : ''}
-                                </div>
-                              )}
+                          {asset.avgPurchasePrice !== undefined ? 
+                            formatPrice(asset.avgPurchasePrice, asset.symbol) : 
+                            "N/A"}
+                          {asset.avgPurchasePrice !== undefined && (
+                            <div className="text-xs text-white/50 mt-1">
+                              {asset.usdcxSpent !== undefined && asset.balance > 0 
+                                ? `Based on ${formatPrice(asset.usdcxSpent, 'USDCx')} spent`
+                                : ''}
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <div className={`flex items-center gap-1 ${
@@ -826,16 +849,12 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          {new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                            minimumFractionDigits: 0,
-                          }).format(asset.value)}
-                              {asset.balance > 0 && (
-                                <div className="text-xs text-white/50 mt-1">
-                                  {formatTokenBalance(asset.balance)} tokens
-                                </div>
-                              )}
+                          {formatPrice(asset.value, asset.symbol)}
+                          {asset.balance > 0 && (
+                            <div className="text-xs text-white/50 mt-1">
+                              {formatTokenBalance(asset.balance, asset.symbol)} {asset.symbol}
+                            </div>
+                          )}
                         </td>
                       </tr>
                         ))
