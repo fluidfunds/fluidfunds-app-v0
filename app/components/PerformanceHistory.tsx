@@ -29,7 +29,8 @@ const TOKEN_COLORS: { [key: string]: string } = {
   'SEP': '#62AEEA',
   'WBTC': '#F7931A',
   'ARB': '#28A0F0',
-  '0xbec5068ace31df3b6342450689d030716fdda961': '#F7931A', // BTC color for this specific address
+  '0xbec5068ace31df3b6342450689d030716fdda961': '#F7931A',
+   // BTC color for this specific address
 };
 
 // Add default prices for our tokens
@@ -40,7 +41,7 @@ const DEFAULT_TOKEN_PRICES: { [key: string]: number } = {
   'ETH': 2500.00,
   'DAIx': 1.01,
   'USDCx': 1.00,
-  'BTC': 87000,
+  'BTC': 89284,
   'USDC': 1.00,
   'DAI': 1.01
 };
@@ -60,47 +61,6 @@ const verifyApiKey = () => {
   }
   
   return true;
-};
-
-// Add this helper function at the top of your file
-const formatTokenBalance = (balance: number, symbol?: string): string => {
-  if (!isFinite(balance) || isNaN(balance)) return '0';
-  
-  // Special handling for BTC and other low-decimal tokens
-  if (symbol === 'BTC' || balance < 0.01) {
-    return balance.toFixed(8); // Show up to 8 decimal places for very small numbers
-  }
-  
-  // For larger numbers, use the existing formatting
-  if (balance >= 1_000_000_000) {
-    return `${(balance / 1_000_000_000).toFixed(2)}B`;
-  } else if (balance >= 1_000_000) {
-    return `${(balance / 1_000_000).toFixed(2)}M`;
-  } else if (balance >= 1_000) {
-    return `${(balance / 1_000).toFixed(2)}K`;
-  } else {
-    // For numbers between 0.01 and 999
-    return balance.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4
-    });
-  }
-};
-
-// Add this helper function near the other formatting functions
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const formatPrice = (price: number, symbol: string): string => {
-  if (!isFinite(price) || isNaN(price)) return '$0.00';
-  
-  // Show more decimals for low-value tokens
-  const decimals = price < 1 ? 4 : 2;
-  
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  }).format(price);
 };
 
 // Define Asset interface for portfolio display
@@ -195,14 +155,21 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
 
     // Log all tokens including dust for debugging
     const processedTokens = tokenBalances.map(t => {
-      const balance = parseFloat(t.balance) / Math.pow(10, t.contract_decimals);
+      // Use BigNumber or similar for precise decimal calculations
+      const balance = Number(t.balance) / Math.pow(10, t.contract_decimals);
       const price = t.quote_rate || DEFAULT_TOKEN_PRICES[t.contract_ticker_symbol] || 0;
+
+      // Format balance based on token type
+      const formattedBalance = t.contract_ticker_symbol === 'BTC' 
+        ? Number(balance.toFixed(8)) // BTC typically uses 8 decimal places
+        : balance;
+
       return {
         symbol: t.contract_ticker_symbol || 'Unknown',
         name: t.contract_name || t.contract_ticker_symbol || 'Unknown',
-        balance,
+        balance: formattedBalance,
         price,
-        value: balance * price
+        value: formattedBalance * price
       };
     });
 
@@ -249,27 +216,31 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
     const portfolioAssets = validTokens.map(token => {
       let symbol = token.contract_ticker_symbol || 'Unknown';
       let name = token.contract_name || symbol;
-      let decimals = token.contract_decimals;
       
       // Manual override for known addresses with missing metadata
       if (token.contract_address.toLowerCase() === '0xbec5068ace31df3b6342450689d030716fdda961') {
         symbol = 'BTC';
-        name = 'Test Bitcoin';
-        // Force 8 decimals for BTC specifically (standard for Bitcoin)
-        decimals = 8;
+        name = 'Bitcoin';
+        
+        // Log the raw BTC data for debugging
+        console.log('Raw BTC token data:', {
+          address: token.contract_address,
+          rawBalance: token.balance,
+          decimals: token.contract_decimals,
+          expected: parseFloat(token.balance) / Math.pow(10, 18) // Force 18 decimals
+        });
       }
       
+      // Use the token's decimals, but override to 18 for BTC if needed
+      const decimals = symbol === 'BTC' ? 18 : token.contract_decimals;
+      
+      // Calculate balance correctly
       const balance = parseFloat(token.balance) / Math.pow(10, decimals);
-      // Cap balance to a reasonable number if it's extremely large
-      const cappedBalance = isFinite(balance) && balance < 1_000_000_000 ? balance : 0;
       
+      // Rest of your code remains the same
       const price = token.quote_rate || DEFAULT_TOKEN_PRICES[symbol] || 0;
-      const value = cappedBalance * price;
-      
-      // Raw allocation before capping
-      const rawAllocation = portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
-      // Cap allocation to 100% maximum
-      const allocation = Math.min(rawAllocation, 100);
+      const value = balance * price;
+      const allocation = portfolioValue > 0 ? (value / portfolioValue) * 100 : 0;
       
       // Get average purchase price from trade history if available
       const tokenKey = token.contract_address.toLowerCase();
@@ -278,18 +249,15 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       // Use trade history price if available, otherwise fallback to previous calculation
       const avgPurchasePrice = tradeHistoryPrice !== undefined 
         ? tradeHistoryPrice
-        : (cappedBalance > 0 ? usdcxBalance / cappedBalance : price);
+        : (balance > 0 ? usdcxBalance / balance : price);
       
       // Use TOKEN_COLORS if available, otherwise generate a color
       const color = TOKEN_COLORS[symbol] || `hsl(${Math.abs((symbol || 'Unknown').split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
       
       // Calculate price change percentage based on trade history
-      const rawPriceChange = avgPurchasePrice > 0 
+      const priceChange = avgPurchasePrice > 0 
         ? ((price - avgPurchasePrice) / avgPurchasePrice) * 100 
         : 0;
-      
-      // Cap price change to reasonable values
-      const priceChange = Math.min(Math.max(rawPriceChange, -9999), 9999);
 
       return {
         id: token.contract_address,
@@ -297,8 +265,8 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
         symbol,
         price,
         avgPurchasePrice,
-        usdcxSpent: averagePrices[tokenKey]?.totalSpent || usdcxBalance,
-        balance: cappedBalance,
+        usdcxSpent: averagePrices[tokenKey]?.totalSpent || usdcxBalance, // Use trade data if available
+        balance,
         value,
         allocation,
         color,
@@ -799,16 +767,20 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          {asset.avgPurchasePrice !== undefined ? 
-                            formatPrice(asset.avgPurchasePrice, asset.symbol) : 
-                            "N/A"}
-                          {asset.avgPurchasePrice !== undefined && (
-                            <div className="text-xs text-white/50 mt-1">
-                              {asset.usdcxSpent !== undefined && asset.balance > 0 
-                                ? `Based on ${formatPrice(asset.usdcxSpent, 'USDCx')} spent`
-                                : ''}
-                            </div>
-                          )}
+                              {asset.avgPurchasePrice !== undefined ? 
+                                new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                                  minimumFractionDigits: asset.avgPurchasePrice < 1 ? 4 : 2,
+                                }).format(asset.avgPurchasePrice) : 
+                                "N/A"}
+                              {asset.avgPurchasePrice !== undefined && (
+                                <div className="text-xs text-white/50 mt-1">
+                                  {asset.usdcxSpent !== undefined && asset.balance > 0 
+                                    ? `Based on ${asset.usdcxSpent.toFixed(2)} USDCx spent`
+                                    : ''}
+                                </div>
+                              )}
                         </td>
                         <td className="px-4 py-4">
                           <div className={`flex items-center gap-1 ${
@@ -839,22 +811,32 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           <div className="flex flex-col gap-1">
                             <div className="w-full bg-white/10 rounded-full h-2">
                               <div className="h-2 rounded-full" style={{ 
-                                width: `${Math.min(asset.allocation, 100)}%`,
+                                width: `${asset.allocation}%`,
                                 backgroundColor: asset.color
                               }}></div>
                             </div>
                             <span className="text-xs text-white/70 text-center">
-                              {Math.min(asset.allocation, 100).toFixed(2)}%
+                              {asset.allocation.toFixed(2)}%
                             </span>
                           </div>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          {formatPrice(asset.value, asset.symbol)}
-                          {asset.balance > 0 && (
-                            <div className="text-xs text-white/50 mt-1">
-                              {formatTokenBalance(asset.balance, asset.symbol)} {asset.symbol}
-                            </div>
-                          )}
+                          {new Intl.NumberFormat('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            minimumFractionDigits: 0,
+                          }).format(asset.value)}
+                              {asset.balance > 0 && (
+                                <div className="text-xs text-white/50 mt-1">
+                                  {asset.symbol === 'BTC' 
+                                    ? `${asset.balance.toFixed(8)} BTC` // Display with 8 decimals for users, even though it's stored with 18
+                                    : `${asset.balance.toLocaleString(undefined, {
+                                        maximumFractionDigits: asset.balance < 0.01 ? 6 : 4,
+                                        minimumFractionDigits: asset.balance < 0.01 ? 6 : 2
+                                      })} ${asset.symbol}`
+                                  }
+                                </div>
+                              )}
                         </td>
                       </tr>
                         ))
