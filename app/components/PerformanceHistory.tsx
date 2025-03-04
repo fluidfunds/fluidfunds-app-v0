@@ -18,7 +18,7 @@ const TOKEN_COLORS: { [key: string]: string } = {
   'USDCx': '#2775CA',
   'BTC': '#F7931A',
   'DAIx': '#F5AC37',
-  'ETHx': '#627EEA',
+  'ETH': '#627EEA',
   'MATICx': '#8247E5',
   'WETH': '#627EEA',
   'USDC': '#2775CA',
@@ -38,12 +38,12 @@ const DEFAULT_TOKEN_PRICES: { [key: string]: number } = {
   'fUSDCx': 1.00,
   'fDAIx': 1.01,
   'fUSDC': 1.00,
-  'ETH': 2500.00,
-  'DAIx': 1.01,
-  'USDCx': 1.00,
-  'BTC': 89284,
-  'USDC': 1.00,
-  'DAI': 1.01
+  'LTC': 91.9987,
+  'ETH': 2239.96,
+  'BTC': 101879.00,
+  'AAVE': 31.9997,
+  'DOGE': 0.36996
+  
 };
 
 // Add a helper function to verify API key
@@ -220,7 +220,7 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
       // Manual override for known addresses with missing metadata
       if (token.contract_address.toLowerCase() === '0xbec5068ace31df3b6342450689d030716fdda961') {
         symbol = 'BTC';
-        name = 'Bitcoin';
+        name = 'Test Bitcoin';
         
         // Log the raw BTC data for debugging
         console.log('Raw BTC token data:', {
@@ -231,8 +231,65 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
         });
       }
       
-      // Use the token's decimals, but override to 18 for BTC if needed
-      const decimals = symbol === 'BTC' ? 18 : token.contract_decimals;
+      // Manual override for ETH token
+      if (token.contract_address.toLowerCase() === '0xc0341325a034516c4146ef496a768de1850d09f5') {
+        symbol = 'ETH';
+        name = 'Test Ethereum';
+        
+        // Log the raw ETH data for debugging
+        console.log('Raw ETH token data:', {
+          address: token.contract_address,
+          rawBalance: token.balance,
+          decimals: token.contract_decimals,
+          expected: parseFloat(token.balance) / Math.pow(10, 18) // Force 18 decimals
+        });
+      }
+      
+      // Manual override for LTC token
+      if (token.contract_address.toLowerCase() === '0xb2f89cabbaf106d0ca10302d10a6d4b1734d5009') {
+        symbol = 'LTC';
+        name = 'Test Litecoin';
+        
+        // Log the raw LTC data for debugging
+        console.log('Raw LTC token data:', {
+          address: token.contract_address,
+          rawBalance: token.balance,
+          decimals: token.contract_decimals,
+          expected: parseFloat(token.balance) / Math.pow(10, 18) // Force 18 decimals
+        });
+      }
+
+      // Manual override for AAVE token
+      if (token.contract_address.toLowerCase() === '0x8caa1b86c6aa7b4c8b733515ad1a9a2ecf8a9887') {
+        symbol = 'AAVE';
+        name = 'Test Aave';
+        
+        // Log the raw AAVE data for debugging
+        console.log('Raw AAVE token data:', {
+          address: token.contract_address,
+          rawBalance: token.balance,
+          decimals: token.contract_decimals,
+          expected: parseFloat(token.balance) / Math.pow(10, 18) // Force 18 decimals
+        });
+      }
+      
+      // Manual override for DOGE token
+      if (token.contract_address.toLowerCase() === '0xd3443ddce8a43626fa54f0a3aee81451d4e1a6b3') {
+        symbol = 'DOGE';
+        name = 'Test Dogecoin';
+        
+        // Log the raw DOGE data for debugging
+        console.log('Raw DOGE token data:', {
+          address: token.contract_address,
+          rawBalance: token.balance,
+          decimals: token.contract_decimals,
+          expected: parseFloat(token.balance) / Math.pow(10, 18) // Force 18 decimals
+        });
+      }
+      
+      // Use the token's decimals, but override to 18 for known tokens if needed
+      const cryptoSymbols = ['BTC', 'ETH', 'LTC', 'AAVE', 'DOGE'];
+      const decimals = cryptoSymbols.includes(symbol) ? 18 : token.contract_decimals;
       
       // Calculate balance correctly
       const balance = parseFloat(token.balance) / Math.pow(10, decimals);
@@ -828,13 +885,18 @@ export const PerformanceHistory = ({ tvl, percentageChange, fundAddress }: Perfo
                           }).format(asset.value)}
                               {asset.balance > 0 && (
                                 <div className="text-xs text-white/50 mt-1">
-                                  {asset.symbol === 'BTC' 
-                                    ? `${asset.balance.toFixed(8)} BTC` // Display with 8 decimals for users, even though it's stored with 18
-                                    : `${asset.balance.toLocaleString(undefined, {
-                                        maximumFractionDigits: asset.balance < 0.01 ? 6 : 4,
-                                        minimumFractionDigits: asset.balance < 0.01 ? 6 : 2
-                                      })} ${asset.symbol}`
-                                  }
+                                  {(() => {
+                                    const cryptoSymbols = ['BTC', 'ETH', 'LTC', 'AAVE', 'DOGE'];
+                                    
+                                    if (cryptoSymbols.includes(asset.symbol)) {
+                                      return `${asset.balance.toFixed(8)} ${asset.symbol}`;
+                                    }
+                                    
+                                    return `${asset.balance.toLocaleString(undefined, {
+                                      maximumFractionDigits: asset.balance < 0.01 ? 6 : 4,
+                                      minimumFractionDigits: asset.balance < 0.01 ? 6 : 2
+                                    })} ${asset.symbol}`;
+                                  })()}
                                 </div>
                               )}
                         </td>
