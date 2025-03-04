@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Trophy, Activity, BarChart2, Zap, TrendingUp, Wallet, TrendingDown } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
@@ -21,8 +21,8 @@ export default function WalletPredictionMarketPage() {
   const [trackedWallets, setTrackedWallets] = useState<WalletData[]>([]);
   const router = useRouter();
 
-  // Each tracked profile includes a socialName and one or more addresses.
-  const trackedWalletsData = [
+  // Move trackedWalletsData into useMemo
+  const trackedWalletsData = useMemo(() => [
     { socialName: "basefreakz", addresses: ["0xcde9f00116bffe9852b2cd4295446ae5fc51ad0a"] },
     { socialName: "brycekrispy.eth", addresses: ["0x8ce92c44b81d6b7366a66f25bbf078bfd78829d2", "0xcdb53d17f1b829030b4fe0e3e106c2d4db33ac2a"] },
     { socialName: "bleu.eth", addresses: ["0xc4239467a62edaad4a098235a6754579e6662566", "0x38a0d87bdeac77ac859ac910a588cf80a05d854d", "0xe9dadd9ded105d67e6cb7aadc48be0c2d45df652"] },
@@ -31,19 +31,17 @@ export default function WalletPredictionMarketPage() {
     { socialName: "cojo.eth", addresses: ["0xe943ca883ef3294e0fc55a1a14591abead1b5927", "0xcaaa26c5498de67466e6823ef69718feb04c2952"] },
     { socialName: "renatov.eth", addresses: ["0xd47cc86868092fb56f56d78919c207ecf7593060", "0x6046d412b45dace6c963c7c3c892ad951ec97e57"] },
     { socialName: "tylerfoust.eth", addresses: ["0x0b001c532a98b637f5b66c55f02fc9c6645e54ca", "0x3d335600833f6d4075184ea5350a3f37f3b82ce1"] },
-  ];
+  ], []); // Empty dependency array since this data is static
 
-  // Fetch detailed wallet data for each tracked wallet (similar to your detail page)
+  // Update useEffect to include trackedWalletsData in dependencies
   useEffect(() => {
     async function fetchTrackedWallets() {
       const results = await Promise.all(
         trackedWalletsData.map(async (profile) => {
-          // fetchWalletDataForProfile returns an object with totalValue, performance, etc.
           return await fetchWalletDataForProfile(profile);
         })
       );
 
-      // Sort by totalValue (descending) and assign rank
       results.sort((a, b) => b.totalValue - a.totalValue);
       results.forEach((wallet, index) => (wallet.rank = index + 1));
       setTrackedWallets(results);

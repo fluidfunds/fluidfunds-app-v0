@@ -3,7 +3,7 @@ import { useInvestorStreams } from '@/app/hooks/useInvestorStreams';
 import { useFlowingBalance } from '@/app/hooks/useFlowingBalance';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
-import { ArrowDownUp, WalletCards, Info, TrendingUp, Activity } from 'lucide-react';
+import { ArrowDownUp, Info, TrendingUp, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Helper function to format balance with appropriate decimal places
