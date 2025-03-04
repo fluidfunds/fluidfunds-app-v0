@@ -36,12 +36,24 @@ export default function LeaderboardPage() {
   // Make sure your useFluidFundsSubgraphManager hook returns an object with { funds, loading, error }
   const { funds, loading, error } = useFluidFundsSubgraphManager()
 
-  // Sort funds by fallback TVL (using default "0" if metrics aren't available)
-  const sortedFunds = funds.sort((a: FundWithMetadata, b: FundWithMetadata) => {
-    const tvlA = parseFloat(a.metadata?.performanceMetrics?.tvl ?? "0")
-    const tvlB = parseFloat(b.metadata?.performanceMetrics?.tvl ?? "0")
-    return tvlB - tvlA
-  })
+  // Calculate performance metrics and sort funds by performance
+  const sortedFunds = useMemo(() => {
+    return [...funds].sort((a: FundWithMetadata, b: FundWithMetadata) => {
+      const { aggregatedStreamData: dataA } = useSuperfluid(a.address)
+      const { aggregatedStreamData: dataB } = useSuperfluid(b.address)
+
+      const getPerformance = (data: any) => {
+        if (data?.totalStreamed && Number(data.totalStreamed) !== 0) {
+          return (Number(data.totalDailyFlow) / Number(data.totalStreamed)) * 100
+        }
+        return 0
+      }
+
+      const perfA = getPerformance(dataA)
+      const perfB = getPerformance(dataB)
+      return perfB - perfA
+    })
+  }, [funds])
 
   if (loading) {
     return (
