@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ExternalLink, LineChart, TrendingUp, TrendingDown } from 'lucide-react';
+import { AVAILABLE_TOKENS } from '../types/trading';
 
 interface Trade {
   id: string;
@@ -16,11 +17,20 @@ interface RecentTradingActivityProps {
   loading: boolean;
 }
 
-const getTokenSymbol = (address: string) => {
+const getTokenSymbol = (address: string): string => {
   const lowerAddress = address.toLowerCase();
-  if (lowerAddress.includes('920d')) return 'USDCx';
-  if (lowerAddress.includes('5fd2')) return 'DAIx';
-  return address.slice(-5, -1);
+  
+  // Find matching token from AVAILABLE_TOKENS
+  const token = AVAILABLE_TOKENS.find(
+    token => token.address.toLowerCase() === lowerAddress
+  );
+
+  if (token) {
+    return token.symbol;
+  }
+
+  // Fallback: return shortened address if token not found
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
 // Add a number formatting helper function

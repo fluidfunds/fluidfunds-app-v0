@@ -20,7 +20,7 @@ export const AVAILABLE_TOKENS = [
   {
     symbol: 'LTC',
     address: '0xB2f89CabbaF106D0cA10302D10A6d4b1734d5009' as Address,
-    decimals: 8
+    decimals: 18
   },
   {
     symbol: 'ETH',
@@ -30,7 +30,7 @@ export const AVAILABLE_TOKENS = [
   {
     symbol: 'BTC',
     address: '0xbEc5068ace31Df3b6342450689d030716FdDA961' as Address,
-    decimals: 8
+    decimals: 18
   },
   {
     symbol: 'AAVE',
@@ -40,6 +40,6 @@ export const AVAILABLE_TOKENS = [
   {
     symbol: 'DOGE',
     address: '0xD3443DdcE8a43626fA54f0a3aeE81451D4e1a6b3' as Address,
-    decimals: 8
+    decimals: 18
   }
 ] as const;

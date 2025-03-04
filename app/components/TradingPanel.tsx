@@ -1,13 +1,14 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowUpDown } from 'lucide-react';
-import { Address, formatEther } from 'viem';
+import { ArrowUpDown, Info, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Address, formatEther, formatUnits } from 'viem';
 import { useTrading } from '@/app/hooks/useTrading';
 import { TokenSelect } from './TokenSelect';
 import { AVAILABLE_TOKENS, type Token } from '@/app/types/trading';
 import { toast } from 'sonner';
 
-// Add token price mapping at the top of your file
+// Token price mapping
 const TOKEN_PRICES: Record<string, number> = {
   'fUSDC': 1.00,
   'fDAI': 1.01,
@@ -22,9 +23,42 @@ interface TradingPanelProps {
   fundAddress: Address;
 }
 
-const formatBalance = (balance: bigint | undefined): string => {
+const formatBalance = (balance: bigint | undefined, decimals: number = 18): string => {
   if (!balance) return '0';
-  return formatEther(balance);
+  
+  const rawNumber = formatUnits(balance, decimals);
+  const num = parseFloat(rawNumber);
+
+  // Format based on token type and amount size
+  if (num < 0.000001) {
+    return '< 0.000001';
+  }
+
+  switch (decimals) {
+    case 8: // BTC
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 8
+      });
+    case 18: // DOGE, LTC
+      if (num < 1) {
+        // For small numbers, show more decimals
+        return num.toLocaleString(undefined, {
+          minimumFractionDigits: 8,
+          maximumFractionDigits: 8
+        });
+      }
+      // For larger numbers, show fewer decimals
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4
+      });
+    default:
+      return num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6
+      });
+  }
 };
 
 const parseTokenAmount = (amount: string, decimals: number): bigint => {
@@ -52,27 +86,45 @@ const parseTokenAmount = (amount: string, decimals: number): bigint => {
 export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
   const {
     swap,
-    USDCxBalance,
-    DAIxBalance,
+    USDCBalance,      
+    USDCRegularBalance, 
+    USDCxBalance,     
+    DAIBalance,
     LTCBalance,
     ETHBalance,
     BTCBalance,
     AAVEBalance,
     DOGEBalance,
+    isLoadingBalances,
+    tokenBalances
   } = useTrading(fundAddress);
+  
   const [amount, setAmount] = useState<string>('');
   const [tokenIn, setTokenIn] = useState<Token | null>(null);
   const [tokenOut, setTokenOut] = useState<Token | null>(null);
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
+  const [showBalanceInfo, setShowBalanceInfo] = useState<boolean>(false);
+  const [slippage, setSlippage] = useState<number>(0.5); // Default 0.5% slippage
+  
+  // Set default tokens on load
+  useEffect(() => {
+    if (AVAILABLE_TOKENS.length >= 2) {
+      const defaultTokenIn = AVAILABLE_TOKENS.find(t => t.symbol === 'fUSDC') || AVAILABLE_TOKENS[0];
+      const defaultTokenOut = AVAILABLE_TOKENS.find(t => t.symbol === 'BTC') || AVAILABLE_TOKENS[1];
+      
+      setTokenIn(defaultTokenIn);
+      setTokenOut(defaultTokenOut);
+    }
+  }, []);
 
-  const getBalance = (token: Token): bigint => {
+  const getBalance = (token: Token | null): bigint => {
     if (!token) return 0n;
     
     switch (token.symbol) {
-      case 'fUSDCx':
-        return BigInt(USDCxBalance?.toString() ?? '0');
-      case 'fDAIx':
-        return BigInt(DAIxBalance?.toString() ?? '0');
+      case 'fUSDC':
+        return BigInt(USDCBalance?.toString() ?? '0');
+      case 'fDAI':
+        return BigInt(DAIBalance?.toString() ?? '0');
       case 'LTC':
         return BigInt(LTCBalance?.toString() ?? '0');
       case 'ETH':
@@ -84,7 +136,21 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
       case 'DOGE':
         return BigInt(DOGEBalance?.toString() ?? '0');
       default:
-        return 0n;
+        // Try tokenBalances as fallback
+        return tokenBalances[token.address.toLowerCase()] || 0n;
+    }
+  };
+
+  // Calculate max amount user can input based on balance
+  const maxAmount = (token: Token | null): string => {
+    if (!token) return '0';
+    const balance = getBalance(token);
+    return formatUnits(balance, token.decimals || 18);
+  };
+
+  const handleSetMaxAmount = () => {
+    if (tokenIn) {
+      setAmount(maxAmount(tokenIn));
     }
   };
 
@@ -104,11 +170,19 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
     const inputPrice = TOKEN_PRICES[tokenIn.symbol] || 1;
     const outputPrice = TOKEN_PRICES[tokenOut.symbol] || 1;
     
-    // Calculate based on price ratio with 0.5% slippage
+    // Calculate based on price ratio with slippage
     const inputAmount = parseFloat(amount);
-    const estimatedOutput = (inputAmount * inputPrice / outputPrice) * 0.995;
+    const estimatedOutput = (inputAmount * inputPrice / outputPrice) * (1 - slippage/100);
     
     return estimatedOutput.toFixed(6);
+  };
+  
+  // Calculate dollar value
+  const calculateDollarValue = (tokenAmount: string, tokenSymbol: string): string => {
+    if (!tokenAmount || !tokenSymbol) return '$0.00';
+    const amount = parseFloat(tokenAmount);
+    const price = TOKEN_PRICES[tokenSymbol] || 0;
+    return `$${(amount * price).toFixed(2)}`;
   };
 
   const handleSwap = async () => {
@@ -117,39 +191,43 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
       return;
     }
 
+    // Check if amount exceeds balance
+    const inputAmount = parseTokenAmount(amount, tokenIn.decimals || 18);
+    const balance = getBalance(tokenIn);
+    if (inputAmount > balance) {
+      toast.error(`Insufficient balance. Max: ${formatBalance(balance, tokenIn.decimals || 18)} ${tokenIn.symbol}`);
+      return;
+    }
+
     try {
       setIsSwapping(true);
       
-      // Convert amount to proper base units
-      const decimals = tokenIn.decimals || 18;
-      const amountInBaseUnits = parseTokenAmount(amount, decimals);
-      
-      console.log('Trade parameters:', {
-        input: amount,
-        decimals,
-        baseUnits: amountInBaseUnits.toString()
-      });
-
-      // Prepare swap parameters for executeTrade
+      // Prepare swap parameters
       const swapParams = {
         tokenIn: tokenIn.address,
         tokenOut: tokenOut.address,
-        amountIn: amountInBaseUnits,
-        minAmountOut: 0n,
+        amountIn: inputAmount,
         poolFee: 3000
       };
 
-      // Log the exact parameters being sent to contract
-      console.log('Executing trade with params:', {
-        tokenIn: swapParams.tokenIn,
-        tokenOut: swapParams.tokenOut,
-        amountIn: swapParams.amountIn.toString(),
-        minAmountOut: '0',
-        poolFee: swapParams.poolFee
-      });
-
       const txHash = await swap(swapParams);
-      toast.success(`Trade transaction submitted! Hash: ${txHash}`);
+      
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <div className="font-medium">Trade submitted!</div>
+          <div className="text-xs">
+            <a 
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              View on Etherscan
+            </a>
+          </div>
+        </div>
+      );
+      
       setAmount('');
     } catch (error) {
       console.error('Trade failed:', error);
@@ -159,93 +237,236 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
     }
   };
 
+  // Display token balances with streaming info when applicable
+  const BalanceDisplay = ({ token }: { token: Token }) => {
+    if (token.symbol === 'fUSDC') {
+      return (
+        <div className="flex items-center gap-1">
+          <div className="text-xs text-white/60">
+            {formatBalance(USDCBalance, token.decimals || 18)} {token.symbol} 
+          </div>
+          <button 
+            onClick={() => setShowBalanceInfo(!showBalanceInfo)} 
+            className="rounded-full p-1 hover:bg-white/10"
+          >
+            <Info size={12} className="text-blue-300" />
+          </button>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="text-xs text-white/60">
+        {formatBalance(getBalance(token), token.decimals || 18)} {token.symbol}
+      </div>
+    );
+  };
+
   return (
-    <div className="bg-white/[0.02] rounded-xl p-6 backdrop-blur-sm border border-white/[0.08]">
-      <h3 className="text-lg font-semibold text-white mb-6">Swap Tokens</h3>
+    <div className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 rounded-xl p-6 backdrop-blur-sm border border-white/10 shadow-xl">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-white">Swap Tokens</h3>
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-white/60">Slippage: </div>
+          <select 
+            value={slippage} 
+            onChange={(e) => setSlippage(parseFloat(e.target.value))}
+            className="bg-white/10 rounded px-2 py-1 text-xs text-white outline-none"
+          >
+            <option value="0.1">0.1%</option>
+            <option value="0.5">0.5%</option>
+            <option value="1">1.0%</option>
+            <option value="2">2.0%</option>
+          </select>
+        </div>
+      </div>
+      
+      {/* Info panel for streaming tokens */}
+      {showBalanceInfo && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }} 
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mb-4 bg-blue-900/20 rounded-lg p-3 border border-blue-500/20"
+        >
+          <div className="flex gap-2 items-start">
+            <Info size={16} className="text-blue-400 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-blue-200">Balance Breakdown</h4>
+              <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <div className="text-blue-300">Regular fUSDC:</div>
+                <div className="text-white">{formatBalance(USDCRegularBalance)} fUSDC</div>
+                
+                <div className="text-blue-300">Streaming fUSDCx:</div>
+                <div className="text-white">{formatBalance(USDCxBalance)} fUSDCx</div>
+              </div>
+              <p className="text-xs text-blue-300 mt-2">
+                The streaming balance (fUSDCx) will automatically be converted to regular tokens during trades.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
       
       <div className="space-y-4">
         {/* Input Token */}
         <div className="space-y-2">
-          <label className="text-sm text-white/60">From</label>
-          <div className="flex items-center gap-2 bg-black/20 rounded-lg p-3">
-            <div className="flex-1">
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.0"
-                className="w-full bg-transparent text-white outline-none"
-                disabled={!tokenIn || !tokenOut}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <TokenSelect
-                value={tokenIn}
-                onChange={handleTokenInChange}
-                tokens={AVAILABLE_TOKENS.filter(t => t.address !== tokenOut?.address)}
-              />
-              {tokenIn && (
-                <div className="text-xs text-white/60">
-                  Balance: {formatBalance(getBalance(tokenIn))}
-                </div>
-              )}
+          <div className="flex justify-between items-center">
+            <label className="text-sm text-white/70">From</label>
+            {tokenIn && (
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-white/60">Balance:</div>
+                <BalanceDisplay token={tokenIn} />
+                <button 
+                  onClick={handleSetMaxAmount}
+                  className="text-xs bg-white/10 hover:bg-white/20 text-blue-400 px-2 py-0.5 rounded transition-colors"
+                >
+                  MAX
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-black/30 rounded-lg p-4 border border-white/5">
+            <div className="flex items-center gap-4">
+              <div className="w-1/3">
+                <TokenSelect
+                  value={tokenIn}
+                  onChange={handleTokenInChange}
+                  tokens={AVAILABLE_TOKENS.filter(t => t.address !== tokenOut?.address)}
+                />
+              </div>
+              
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.0"
+                  className="w-full bg-transparent text-white text-2xl outline-none text-right"
+                />
+                {amount && tokenIn && (
+                  <div className="text-right text-xs text-gray-400 mt-1">
+                    {calculateDollarValue(amount, tokenIn.symbol)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Swap Direction Button */}
-        <button
-          onClick={() => {
-            setTokenIn(tokenOut);
-            setTokenOut(tokenIn);
-          }}
-          className="mx-auto block p-2 hover:bg-white/5 rounded-full transition-colors"
-        >
-          <ArrowUpDown className="w-5 h-5 text-white/60" />
-        </button>
-
-        {/* Add this between the input and output fields */}
-        {tokenIn && tokenOut && (
-          <div className="text-center text-xs text-white/60 py-1">
-            1 {tokenIn.symbol} = {(TOKEN_PRICES[tokenIn.symbol] / TOKEN_PRICES[tokenOut.symbol]).toFixed(6)} {tokenOut.symbol}
-          </div>
-        )}
+        <div className="relative flex justify-center">
+          <button
+            onClick={() => {
+              const tempIn = tokenIn;
+              setTokenIn(tokenOut);
+              setTokenOut(tempIn);
+            }}
+            className="absolute -mt-2 bg-gray-700 p-2 rounded-full border border-white/10 hover:bg-gray-600 transition-colors shadow-lg"
+          >
+            <ArrowUpDown className="w-5 h-5 text-white" />
+          </button>
+        </div>
 
         {/* Output Token */}
-        <div className="space-y-2">
-          <label className="text-sm text-white/60">To (estimated)</label>
-          <div className="flex items-center gap-2 bg-black/20 rounded-lg p-3">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={calculateEstimatedOutput()}
-                disabled
-                placeholder="0.0"
-                className="w-full bg-transparent text-white outline-none"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <TokenSelect
-                value={tokenOut}
-                onChange={handleTokenOutChange}
-                tokens={AVAILABLE_TOKENS.filter(t => t.address !== tokenIn?.address)}
-              />
-              {tokenOut && (
-                <div className="text-xs text-white/60">
-                  Balance: {formatBalance(getBalance(tokenOut))}
+        <div className="space-y-2 mt-2">
+          <div className="flex justify-between items-center">
+            <label className="text-sm text-white/70">To (estimated)</label>
+            {tokenOut && (
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-white/60">Balance:</div>
+                <BalanceDisplay token={tokenOut} />
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-black/30 rounded-lg p-4 border border-white/5">
+            <div className="flex items-center gap-4">
+              <div className="w-1/3">
+                <TokenSelect
+                  value={tokenOut}
+                  onChange={handleTokenOutChange}
+                  tokens={AVAILABLE_TOKENS.filter(t => t.address !== tokenIn?.address)}
+                />
+              </div>
+              
+              <div className="flex-1 text-right">
+                <div className="text-white text-2xl">
+                  {calculateEstimatedOutput() || '0.0'}
                 </div>
-              )}
+                {amount && tokenIn && tokenOut && (
+                  <div className="text-xs text-gray-400 mt-1">
+                    {calculateDollarValue(calculateEstimatedOutput(), tokenOut.symbol)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Trading details */}
+        {tokenIn && tokenOut && amount && (
+          <div className="bg-white/5 rounded-lg border border-white/10 p-3">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-white/80">Trade Details</span>
+              {slippage > 1 && (
+                <div className="flex items-center gap-1 text-yellow-400">
+                  <AlertTriangle size={12} />
+                  <span className="text-xs">High Slippage</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/60">Rate</span>
+                <span className="text-white">
+                  1 {tokenIn.symbol} = {(TOKEN_PRICES[tokenIn.symbol] / TOKEN_PRICES[tokenOut.symbol]).toFixed(8)} {tokenOut.symbol}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/60">Network Fee</span>
+                <span className="text-white">0.3%</span>
+              </div>
+              
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/60">Slippage Tolerance</span>
+                <span className="text-white">{slippage}%</span>
+              </div>
+              
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-white/60">Minimum Received</span>
+                <span className="text-white">
+                  {(parseFloat(calculateEstimatedOutput()) * (1 - slippage/100)).toFixed(6)} {tokenOut.symbol}
+                </span>
+              </div>
+            </div>
+            
+            <div className="mt-3 pt-2 border-t border-white/10">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-white/80">Expected Output</span>
+                <div className="flex items-center">
+                  <TrendingUp size={12} className="text-green-400 mr-1" />
+                  <span className="text-white font-medium">
+                    {calculateEstimatedOutput()} {tokenOut.symbol}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Swap Button */}
         <button
           onClick={handleSwap}
-          disabled={isSwapping || !amount || !tokenIn || !tokenOut}
-          className="w-full h-12 rounded-lg bg-fluid-primary text-white font-medium
-                    disabled:opacity-50 disabled:cursor-not-allowed hover:bg-fluid-primary/90
-                    transition-colors flex items-center justify-center gap-2"
+          disabled={isSwapping || !amount || !tokenIn || !tokenOut || isLoadingBalances}
+          className="w-full h-12 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium
+                    disabled:from-gray-700 disabled:to-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed
+                    hover:from-blue-700 hover:to-indigo-700
+                    shadow-lg shadow-blue-900/30
+                    transition-all flex items-center justify-center gap-2"
         >
           {isSwapping ? (
             <>
@@ -254,12 +475,28 @@ export const TradingPanel = ({ fundAddress }: TradingPanelProps) => {
                 transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                 className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
               />
-              <span>Swapping...</span>
+              <span>Processing Swap...</span>
             </>
+          ) : isLoadingBalances ? (
+            'Loading Balances...'
+          ) : !amount ? (
+            'Enter an Amount'
+          ) : parseTokenAmount(amount, tokenIn?.decimals || 18) > getBalance(tokenIn) ? (
+            'Insufficient Balance'
           ) : (
             'Swap Tokens'
           )}
         </button>
+        
+        {/* Additional info about the fund and trading */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => window.open("https://docs.superfluid.finance/", "_blank")}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            Learn more about streaming tokens
+          </button>
+        </div>
       </div>
     </div>
   );
