@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FluidFunds
 
-## Getting Started
+**A Decentralized Investment Pool Platform with Real-Time Streaming Contributions**
 
-First, run the development server:
+FluidFund enables investors to contribute continuously to a fund manager's pool via Superfluid streams. The fund manager invests the pooled USDC on behalf of the investors. This README explains the backend smart contract architecture and the integration with decentralized exchanges (DEXs) like Uniswap, utilizing whitelabeled tokens for trading.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+![FluidFunds](https://github.com/fluidfunds/fluidfunds-app-v0/blob/main/design/fluidfunds.png)
+
+---
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) (v16+)
+- [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/)
+
+## Installation
+
+1. Clone the repo install and run in local:
+   ```bash
+   git clone https://github.com/fluidfunds/fluidfunds-app-v0
+   cd fluidfunds-app-v0
+  
+   npm install
+   npm run dev
+   
+   ```
+
+2. Create your .env.local file:
+
+NEXT_PUBLIC_ALCHEMY_API_KEY="your RPC Api key"
+NEXT_PUBLIC_COVALENT_API_KEY="your covalent Api key"
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID="your WalletConnect Api key"
+NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL=https://subgraph-endpoints.superfluid.dev/base-sepolia/protocol-v1
+
+
+
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
