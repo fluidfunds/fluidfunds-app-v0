@@ -27,10 +27,10 @@ FluidFund enables investors to contribute continuously to a fund manager's pool 
 
 2. Create your .env.local file:
 
-NEXT_PUBLIC_ALCHEMY_API_KEY="your RPC Api key"
-NEXT_PUBLIC_COVALENT_API_KEY="your covalent Api key"
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID="your WalletConnect Api key"
-NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL=https://subgraph-endpoints.superfluid.dev/base-sepolia/protocol-v1
+- NEXT_PUBLIC_ALCHEMY_API_KEY="your RPC Api key"
+- NEXT_PUBLIC_COVALENT_API_KEY="your covalent Api key"
+- NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID="your WalletConnect Api key"
+- NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL=https://subgraph-endpoints.superfluid.dev/base-sepolia/protocol-v1
 
 
 
