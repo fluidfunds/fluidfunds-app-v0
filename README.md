@@ -1,4 +1,4 @@
-# FluidFunds
+# FluidFunds Dapp
 
 **A Decentralized Investment Pool Platform with Real-Time Streaming Contributions**
 
