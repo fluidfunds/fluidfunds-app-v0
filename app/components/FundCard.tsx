@@ -74,22 +74,6 @@ const StreamingSummary = ({ aggregatedData, streamsCount }: {
           <div className="text-sm text-white/60">Total Streamed</div>
         </div>
 
-        {/* Animated Stream Indicator */}
-        <div className="relative h-2 bg-fluid-primary/5 rounded-full overflow-hidden">
-          <motion.div
-            className="absolute inset-0 w-full bg-gradient-to-r from-fluid-primary via-fluid-primary/50 to-transparent"
-            animate={{
-              x: ["0%", "100%"],
-              opacity: [1, 0.5, 1]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-        </div>
-
         {/* Daily Flow Rate */}
         <div className="flex justify-between items-center pt-3 border-t border-fluid-primary/10">
           <div className="text-sm text-white/60">Daily Flow</div>
@@ -250,7 +234,6 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
           <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
                         hover:border-fluid-primary/20 transition-colors group/card">
             <div className="flex items-center text-white/70 mb-3">
-              <TrendingUp className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
               Current PNL
             </div>
             <div className="flex flex-col">
@@ -260,21 +243,20 @@ const FundCard = ({ fund }: { fund: FundInfo }) => {
                 </span>
               </div>
               <div className="text-sm text-white/60 mt-1">
-                {/* {defaultPnl.isPositive ? "+" : "-"}${defaultPnl.value.toLocaleString()} */}
-              </div>
+              since inception
+            </div>
             </div>
           </div>
           
           <div className="bg-white/[0.03] rounded-xl p-5 backdrop-blur-sm border border-white/[0.05]
                         hover:border-fluid-primary/20 transition-colors group/card">
             <div className="flex items-center text-white/70 mb-3">
-              <DollarSign className="w-5 h-5 mr-2 text-fluid-primary group-hover/card:scale-110 transition-transform" />
               Fund Fee
             </div>
             <div className="text-2xl font-bold text-white">
               {fund.fee ? `${fund.fee.toFixed(2)}%` : 'N/A'}
             </div>
-            <div className="text-sm text-white/60 mt-1">
+            <div className="text-sm text-white/60 mt-2">
               of total profits
             </div>
           </div>
