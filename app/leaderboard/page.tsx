@@ -43,8 +43,7 @@ export default function LeaderboardPage() {
     return tvlA - tvlB
   })
 
-  
-  sortedFunds = sortedFunds.toReversed();
+  sortedFunds = [...sortedFunds].reverse();
   console.log("sortedFunds: ", sortedFunds);
 
   if (loading) {
