@@ -19,6 +19,7 @@ import { InvestmentDetails } from '@/app/components/InvestmentDetails';
 import { useUserRole } from '@/app/hooks/useUserRole'; // Import the useUserRole hook
 import InvestorDashboard from '@/app/components/InvestorDashboard'; // Add this import at the top with the other imports
 import { BarChart2, TrendingUp, Users, Zap } from 'lucide-react';
+import { useGetPnL } from '@/app/hooks/useGetPnL';
 
 // Type Definitions
 interface StreamInfo {
@@ -39,6 +40,7 @@ export default function FundDetailPage() {
   const params = useParams();
   const fundAddress = (params?.address as string) as `0x${string}`;
   
+  const { data: pnlData, isLoading: pnlLoading, error: pnlError } = useGetPnL(fundAddress);
   const { fund, loading: fundLoading, error: fundError } = useFluidFundDetails(fundAddress);
    
   const { role, isManager, isLoading: roleLoading } = useUserRole(fundAddress); // Use the hook
@@ -97,6 +99,7 @@ export default function FundDetailPage() {
       toast.error('Failed to copy address');
     }
   };
+  console.log(pnlData, 'pnlData');
   // Memoize the fund hero section using raw contract data
   const FundHeroSection = useMemo(() => (
     <div className="pt-10 pb-14 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-gray-900 to-gray-800/50">
