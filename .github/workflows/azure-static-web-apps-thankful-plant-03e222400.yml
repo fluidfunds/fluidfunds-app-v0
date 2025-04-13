@@ -44,6 +44,14 @@ jobs:
           api_location: "" # Api source code path - optional
           output_location: "" # Built app content directory - optional
           github_id_token: ${{ steps.idtoken.outputs.result }}
+          app_settings: |
+            NEXT_PUBLIC_COVALENT_API_KEY=${{ secrets.NEXT_PUBLIC_COVALENT_API_KEY }}
+            NEXT_PUBLIC_ALCHEMY_API_KEY=${{ secrets.NEXT_PUBLIC_ALCHEMY_API_KEY }}
+            NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL=${{ secrets.NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL }}
+            NEXT_PUBLIC_PINATA_JWT=${{ secrets.NEXT_PUBLIC_PINATA_JWT }}
+            NEXT_PUBLIC_PINATA_SECRET_KEY=${{ secrets.NEXT_PUBLIC_PINATA_SECRET_KEY }}
+            NEXT_PUBLIC_PINATA_API_KEY=${{ secrets.NEXT_PUBLIC_PINATA_API_KEY }}
+            NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${{ secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:

@@ -53,7 +53,7 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
   });
   
   // Get only the first 5 trades (most recent)
-  const recentTrades = sortedTrades.slice(0, 5);
+  const recentTrades = sortedTrades;
   
   console.log('All trades:', trades);
   console.log('Sorted and filtered trades:', recentTrades);
