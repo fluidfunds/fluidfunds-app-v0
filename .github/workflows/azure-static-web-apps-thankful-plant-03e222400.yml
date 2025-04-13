@@ -32,6 +32,15 @@ jobs:
                const coredemo = require('@actions/core')
                return await coredemo.getIDToken()
            result-encoding: string
+      - name: Setup Environment Variables
+        run: |
+          echo "NEXT_PUBLIC_COVALENT_API_KEY=${{ secrets.NEXT_PUBLIC_COVALENT_API_KEY }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_ALCHEMY_API_KEY=${{ secrets.NEXT_PUBLIC_ALCHEMY_API_KEY }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL=${{ secrets.NEXT_PUBLIC_SUPERFLUID_SUBGRAPH_URL }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_PINATA_JWT=${{ secrets.NEXT_PUBLIC_PINATA_JWT }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_PINATA_SECRET_KEY=${{ secrets.NEXT_PUBLIC_PINATA_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_PINATA_API_KEY=${{ secrets.NEXT_PUBLIC_PINATA_API_KEY }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${{ secrets.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID }}" >> $GITHUB_ENV
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
