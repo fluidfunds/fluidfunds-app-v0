@@ -1,7 +1,12 @@
-"use client";
+'use client';
 import { useCallback, useState, useEffect } from 'react';
 import { usePublicClient, useWalletClient } from 'wagmi';
-import { SUPERFLUID_ADDRESSES, CFAv1ForwarderABI, USDCxABI, SUPERFLUID_QUERY_URL } from '@/app/config/superfluid';
+import {
+  SUPERFLUID_ADDRESSES,
+  CFAv1ForwarderABI,
+  USDCxABI,
+  SUPERFLUID_QUERY_URL,
+} from '@/app/config/superfluid';
 import { type PublicClient, formatEther } from 'viem';
 import { logger } from '@/app/utils/logger';
 
@@ -16,7 +21,7 @@ interface Stream {
 
 interface AggregatedStreamData {
   totalDailyFlow: string; // Total daily flow rate in USDCx/day, formatted as string
-  totalStreamed: string;  // Total streamed amount in USDCx, formatted as string
+  totalStreamed: string; // Total streamed amount in USDCx, formatted as string
 }
 
 // Update the GraphQL types to match the schema
@@ -25,16 +30,16 @@ interface GraphQLResponse {
     streams?: {
       id: string;
       currentFlowRate: string;
-      token: { 
-        id: string; 
-        symbol: string; 
-        decimals: string 
+      token: {
+        id: string;
+        symbol: string;
+        decimals: string;
       };
-      sender: { 
-        id: string 
+      sender: {
+        id: string;
       };
-      receiver: { 
-        id: string 
+      receiver: {
+        id: string;
       };
       streamedUntilUpdatedAt: string;
       updatedAtTimestamp: string;
@@ -52,7 +57,9 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usdcxBalance, setUsdcxBalance] = useState('0');
-  const [aggregatedStreamData, setAggregatedStreamData] = useState<AggregatedStreamData | null>(null);
+  const [aggregatedStreamData, setAggregatedStreamData] = useState<AggregatedStreamData | null>(
+    null
+  );
 
   const fetchActiveStreams = useCallback(async () => {
     if (!fundAddress) {
@@ -94,8 +101,8 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { fund: fundAddress.toLowerCase() }
-        })
+          variables: { fund: fundAddress.toLowerCase() },
+        }),
       });
 
       if (!response.ok) {
@@ -123,44 +130,48 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
       }));
 
       // Calculate total daily flow from stream rates (convert from wei/second to tokens/day)
-      const totalDailyFlow = streams.reduce((total, stream) => {
-        // Convert wei/second to tokens/day
-        const flowRatePerSecond = Number(stream.flowRate) / 1e18;
-        const dailyFlow = flowRatePerSecond * 86400; // 86400 seconds in a day
-        return total + dailyFlow;
-      }, 0).toFixed(6);
+      const totalDailyFlow = streams
+        .reduce((total, stream) => {
+          // Convert wei/second to tokens/day
+          const flowRatePerSecond = Number(stream.flowRate) / 1e18;
+          const dailyFlow = flowRatePerSecond * 86400; // 86400 seconds in a day
+          return total + dailyFlow;
+        }, 0)
+        .toFixed(6);
 
       // Calculate total streamed amount (including current ongoing streams)
       const calculateTotalStreamed = (streams: Stream[]): string => {
         const now = Math.floor(Date.now() / 1000);
-        
-        return streams.reduce((total, stream) => {
-          // Get base amount streamed until last update
-          const baseStreamed = BigInt(stream.streamedUntilUpdatedAt || '0');
-          
-          // Calculate additional amount streamed since last update
-          const lastUpdateTime = Number(stream.updatedAtTimestamp || '0');
-          const timeElapsed = BigInt(now - lastUpdateTime);
-          const flowRate = BigInt(stream.flowRate);
-          const additionalStreamed = timeElapsed * flowRate;
-          
-          return total + baseStreamed + additionalStreamed;
-        }, BigInt(0)).toString();
+
+        return streams
+          .reduce((total, stream) => {
+            // Get base amount streamed until last update
+            const baseStreamed = BigInt(stream.streamedUntilUpdatedAt || '0');
+
+            // Calculate additional amount streamed since last update
+            const lastUpdateTime = Number(stream.updatedAtTimestamp || '0');
+            const timeElapsed = BigInt(now - lastUpdateTime);
+            const flowRate = BigInt(stream.flowRate);
+            const additionalStreamed = timeElapsed * flowRate;
+
+            return total + baseStreamed + additionalStreamed;
+          }, BigInt(0))
+          .toString();
       };
 
       const totalStreamed = calculateTotalStreamed(streams);
 
-      logger.log('Processed streams:', { 
-        streams, 
-        totalDailyFlow, 
+      logger.log('Processed streams:', {
+        streams,
+        totalDailyFlow,
         totalStreamed,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       setActiveStreams(streams);
       setAggregatedStreamData({
         totalDailyFlow,
-        totalStreamed: formatEther(BigInt(totalStreamed))
+        totalStreamed: formatEther(BigInt(totalStreamed)),
       });
 
       setError(null);
@@ -208,7 +219,11 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
       if (!walletClient || !publicClient) throw new Error('Wallet not connected');
       try {
         const flowRate = calculateFlowRate(parseFloat(monthlyAmount));
-        logger.log('Creating stream with flowRate:', { flowRate, to: receiverAddress, timestamp: Date.now() });
+        logger.log('Creating stream with flowRate:', {
+          flowRate,
+          to: receiverAddress,
+          timestamp: Date.now(),
+        });
         const { request } = await publicClient.simulateContract({
           address: SUPERFLUID_ADDRESSES.CFAv1Forwarder,
           abi: CFAv1ForwarderABI,
@@ -227,7 +242,7 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
         await publicClient.waitForTransactionReceipt({ hash });
 
         logger.log('Stream created, tx hash:', { hash, timestamp: Date.now() });
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         await fetchActiveStreams();
 
         return hash;
@@ -264,7 +279,7 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
         await publicClient.waitForTransactionReceipt({ hash });
 
         logger.log('Stream deleted, tx hash:', { hash, timestamp: Date.now() });
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         await fetchActiveStreams();
 
         return hash;
@@ -311,6 +326,6 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
     fetchActiveStreams,
     usdcxBalance,
     fetchUSDCxBalance,
-    aggregatedStreamData, 
+    aggregatedStreamData,
   };
 }

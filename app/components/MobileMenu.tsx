@@ -1,58 +1,62 @@
-'use client'
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+'use client';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const MobileMenu = () => {
-  const [isOpen, setIsOpen] = useState(false)
-  const router = useRouter()
+  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   const menuItems = [
     { id: 'funds', label: 'Funds', type: 'scroll' },
     { id: 'leaderboard', label: 'Leaderboard', type: 'link', href: '/leaderboard' },
-    { id: 'wallet-prediction', label: 'Wallet Prediction', type: 'link', href: '/wallet-prediction' }
-  ]
+    {
+      id: 'wallet-prediction',
+      label: 'Wallet Prediction',
+      type: 'link',
+      href: '/wallet-prediction',
+    },
+  ];
 
-  const handleItemClick = (item: typeof menuItems[0]) => {
-    setIsOpen(false)
-    
+  const handleItemClick = (item: (typeof menuItems)[0]) => {
+    setIsOpen(false);
+
     if (item.type === 'link') {
-      router.push(item.href!)
-      return
+      router.push(item.href!);
+      return;
     }
 
     // Scroll behavior for other items
     setTimeout(() => {
-      const element = document.getElementById(item.id)
+      const element = document.getElementById(item.id);
       if (element) {
-        const headerOffset = 80
-        const elementPosition = element.getBoundingClientRect().top
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+        const headerOffset = 80;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
 
         window.scrollTo({
           top: offsetPosition,
-          behavior: 'smooth'
-        })
+          behavior: 'smooth',
+        });
       }
-    }, 100)
-  }
+    }, 100);
+  };
 
   return (
     <div className="md:hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-fluid-white-10 
-                 bg-fluid-white-6 text-fluid-white transition-all duration-200 hover:bg-fluid-white-10"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-fluid-white-10 bg-fluid-white-6 text-fluid-white transition-all duration-200 hover:bg-fluid-white-10"
         aria-label="Toggle menu"
       >
-        <svg 
-          width="18" 
-          height="18" 
-          viewBox="0 0 18 18" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="1.5" 
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
           className="transition-transform duration-200"
           style={{ transform: isOpen ? 'rotate(90deg)' : 'none' }}
         >
@@ -74,12 +78,11 @@ const MobileMenu = () => {
             className="absolute left-0 right-0 top-16 bg-fluid-bg/95 backdrop-blur-[20px]"
           >
             <nav className="flex flex-col border-y border-fluid-white-10">
-              {menuItems.map((item) => (
+              {menuItems.map(item => (
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className="px-5 py-4 text-[15px] text-fluid-white-70 transition-all duration-200 
-                           hover:bg-fluid-white-6 hover:text-fluid-white text-center"
+                  className="px-5 py-4 text-center text-[15px] text-fluid-white-70 transition-all duration-200 hover:bg-fluid-white-6 hover:text-fluid-white"
                 >
                   {item.label}
                 </button>
@@ -87,9 +90,7 @@ const MobileMenu = () => {
               <div className="p-5">
                 <Link
                   href="/connect"
-                  className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-fluid-white-10 
-                           bg-fluid-white-6 px-4 text-[14px] font-medium text-fluid-white 
-                           transition-all duration-200 hover:bg-fluid-white-10"
+                  className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-fluid-white-10 bg-fluid-white-6 px-4 text-[14px] font-medium text-fluid-white transition-all duration-200 hover:bg-fluid-white-10"
                 >
                   Connect
                 </Link>
@@ -99,7 +100,7 @@ const MobileMenu = () => {
         )}
       </AnimatePresence>
     </div>
-  )
-}
+  );
+};
 
-export default MobileMenu
+export default MobileMenu;

@@ -1,13 +1,8 @@
-import { type NextConfig } from 'next'
+import { type NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
-    domains: [
-      'nftstorage.link',
-      'gateway.pinata.cloud',
-      'ipfs.io',
-      'dweb.link'
-    ],
+    domains: ['nftstorage.link', 'gateway.pinata.cloud', 'ipfs.io', 'dweb.link'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -28,9 +23,9 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'dweb.link',
         pathname: '/ipfs/**',
-      }
+      },
     ],
-    unoptimized: true
+    unoptimized: true,
   },
   reactStrictMode: true,
   typescript: {
@@ -44,9 +39,9 @@ const nextConfig: NextConfig = {
       // Add any other Turbopack configurations if needed
     },
   },
-  webpack: (config) => {
-    config.resolve.fallback = { fs: false, net: false, tls: false }
-    return config
+  webpack: config => {
+    config.resolve.fallback = { fs: false, net: false, tls: false };
+    return config;
   },
   async headers() {
     return [
@@ -56,19 +51,24 @@ const nextConfig: NextConfig = {
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,POST,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value:
+              'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
+          },
         ],
       },
-    ]
+    ];
   },
   async rewrites() {
     return [
       {
         source: '/subgraph/:path*',
-        destination: 'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia/:path*'
-      }
-    ]
-  }
-}
+        destination:
+          'https://api.thegraph.com/subgraphs/name/superfluid-finance/protocol-v1-base-sepolia/:path*',
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;

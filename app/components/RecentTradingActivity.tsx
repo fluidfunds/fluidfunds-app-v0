@@ -19,11 +19,9 @@ interface RecentTradingActivityProps {
 
 const getTokenSymbol = (address: string): string => {
   const lowerAddress = address.toLowerCase();
-  
+
   // Find matching token from AVAILABLE_TOKENS
-  const token = AVAILABLE_TOKENS.find(
-    token => token.address.toLowerCase() === lowerAddress
-  );
+  const token = AVAILABLE_TOKENS.find(token => token.address.toLowerCase() === lowerAddress);
 
   if (token) {
     return token.symbol;
@@ -42,7 +40,7 @@ const formatAmount = (amount: number) => {
   // For larger numbers, show up to 6 decimal places
   return amount.toLocaleString('en-US', {
     maximumFractionDigits: 6,
-    minimumFractionDigits: 2
+    minimumFractionDigits: 2,
   });
 };
 
@@ -51,10 +49,10 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
   const sortedTrades = [...trades].sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
-  
+
   // Get only the first 5 trades (most recent)
   const recentTrades = sortedTrades;
-  
+
   console.log('All trades:', trades);
   console.log('Sorted and filtered trades:', recentTrades);
 
@@ -68,7 +66,7 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
     const diffInSeconds = Math.floor(diffInMs / 1000);
-    
+
     // More granular time differences
     if (diffInSeconds < 30) return 'just now';
     if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
@@ -85,36 +83,38 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
   };
 
   return (
-    <div className="bg-white/[0.02] rounded-xl backdrop-blur-sm border border-white/[0.08] p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-sm">
+      <div className="mb-6 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Recent Trading Activity</h3>
-        <div className="flex items-center gap-2 text-white/60 text-sm">
-          <LineChart className="w-4 h-4" />
-          <span>Last {Math.min(trades.length, 5)} of {trades.length} trades</span>
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          <LineChart className="h-4 w-4" />
+          <span>
+            Last {Math.min(trades.length, 5)} of {trades.length} trades
+          </span>
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-fluid-primary"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-fluid-primary"></div>
         </div>
       ) : recentTrades.length > 0 ? (
-        <div className="divide-y divide-white/[0.08] space-y-4">
-          {recentTrades.map((trade) => (
+        <div className="space-y-4 divide-y divide-white/[0.08]">
+          {recentTrades.map(trade => (
             <div key={trade.id} className="pt-4 first:pt-0">
-              <div className="flex items-center justify-between group">
+              <div className="group flex items-center justify-between">
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">
+                      <span className="font-medium text-white">
                         {formatAmount(trade.amountIn)} {getTokenSymbol(trade.tokenIn)}
                       </span>
-                      <span className="text-white/60 px-1">→</span>
-                      <span className="text-white font-medium">
+                      <span className="px-1 text-white/60">→</span>
+                      <span className="font-medium text-white">
                         {formatAmount(trade.amountOut)} {getTokenSymbol(trade.tokenOut)}
                       </span>
                     </div>
-                    <div className="px-2 py-1 rounded-full bg-white/[0.05] text-xs text-white/60">
+                    <div className="rounded-full bg-white/[0.05] px-2 py-1 text-xs text-white/60">
                       {formatTime(trade.timestamp)}
                     </div>
                   </div>
@@ -128,10 +128,10 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
                   href={`https://sepolia.etherscan.io/tx/${trade.transactionHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-60 hover:opacity-100"
+                  className="rounded-lg p-2 opacity-60 transition-colors hover:bg-white/10 hover:opacity-100"
                   title="View on Etherscan"
                 >
-                  <ExternalLink className="w-4 h-4 text-white" />
+                  <ExternalLink className="h-4 w-4 text-white" />
                 </a>
               </div>
             </div>
@@ -139,7 +139,7 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-12 text-white/60">
-          <LineChart className="w-12 h-12 mb-3 opacity-40" />
+          <LineChart className="mb-3 h-12 w-12 opacity-40" />
           <p>No trades executed yet</p>
         </div>
       )}

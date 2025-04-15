@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { SUPERFLUID_QUERY_URL } from '@/app/config/superfluid';
@@ -20,16 +20,16 @@ interface GraphQLResponse {
     streams?: {
       id: string;
       currentFlowRate: string;
-      token: { 
-        id: string; 
-        symbol: string; 
-        decimals: string 
+      token: {
+        id: string;
+        symbol: string;
+        decimals: string;
       };
-      sender: { 
-        id: string 
+      sender: {
+        id: string;
       };
-      receiver: { 
-        id: string 
+      receiver: {
+        id: string;
       };
       streamedUntilUpdatedAt: string;
       updatedAtTimestamp: string;
@@ -43,19 +43,25 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalStreamedAmount, setTotalStreamedAmount] = useState<bigint>(BigInt(0));
-  const [dailyFlowRate, setDailyFlowRate] = useState<string>("0");
+  const [dailyFlowRate, setDailyFlowRate] = useState<string>('0');
   const { address: walletAddress } = useAccount();
 
   // Memoize addresses to prevent unnecessary re-renders
-  const memoizedAddresses = useCallback(() => ({
-    fund: fundAddress?.toLowerCase(),
-    wallet: walletAddress?.toLowerCase()
-  }), [fundAddress, walletAddress]);
+  const memoizedAddresses = useCallback(
+    () => ({
+      fund: fundAddress?.toLowerCase(),
+      wallet: walletAddress?.toLowerCase(),
+    }),
+    [fundAddress, walletAddress]
+  );
 
   const fetchInvestorStream = useCallback(async () => {
     const addresses = memoizedAddresses();
     if (!addresses.fund || !addresses.wallet) {
-      logger.log('Missing address data', { fundAddress: addresses.fund, walletAddress: addresses.wallet });
+      logger.log('Missing address data', {
+        fundAddress: addresses.fund,
+        walletAddress: addresses.wallet,
+      });
       return;
     }
 
@@ -63,7 +69,7 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
     if (!stream) {
       setLoading(true);
     }
-    
+
     try {
       // Query for streams from this wallet to the fund
       const query = `
@@ -99,11 +105,11 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query,
-          variables: { 
+          variables: {
             investor: addresses.wallet,
-            fund: addresses.fund 
-          }
-        })
+            fund: addresses.fund,
+          },
+        }),
       });
 
       if (!response.ok) {
@@ -118,12 +124,12 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
       }
 
       const streams = result.data?.streams || [];
-      
+
       if (streams.length === 0) {
         // No active streams found
         setStream(null);
         setTotalStreamedAmount(BigInt(0));
-        setDailyFlowRate("0");
+        setDailyFlowRate('0');
         setError(null);
         setLoading(false);
         return;
@@ -131,7 +137,7 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
 
       // We expect only one stream from an investor to a fund
       const investorStream = streams[0];
-      
+
       const mappedStream = {
         id: investorStream.id,
         sender: investorStream.sender.id,
@@ -147,7 +153,7 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
       };
 
       setStream(mappedStream);
-      
+
       // Calculate total streamed amount including real-time updates
       const now = Math.floor(Date.now() / 1000);
       const baseStreamed = BigInt(investorStream.streamedUntilUpdatedAt || '0');
@@ -155,7 +161,7 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
       const timeElapsed = BigInt(now - lastUpdateTime);
       const flowRate = BigInt(investorStream.currentFlowRate);
       const additionalStreamed = timeElapsed * flowRate;
-      
+
       const totalStreamed = baseStreamed + additionalStreamed;
       setTotalStreamedAmount(totalStreamed);
 
@@ -182,17 +188,20 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
     // Poll every 30 seconds instead of 10 for less frequent updates
     const interval = setInterval(fetchInvestorStream, 30000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchInvestorStream]);
 
   // Memoize return values to prevent unnecessary re-renders
-  return useMemo(() => ({
-    stream,
-    loading,
-    error,
-    totalStreamedAmount,
-    formattedTotalStreamed: formatEther(totalStreamedAmount),
-    dailyFlowRate,
-    refresh: fetchInvestorStream
-  }), [stream, loading, error, totalStreamedAmount, dailyFlowRate, fetchInvestorStream]);
+  return useMemo(
+    () => ({
+      stream,
+      loading,
+      error,
+      totalStreamedAmount,
+      formattedTotalStreamed: formatEther(totalStreamedAmount),
+      dailyFlowRate,
+      refresh: fetchInvestorStream,
+    }),
+    [stream, loading, error, totalStreamedAmount, dailyFlowRate, fetchInvestorStream]
+  );
 }

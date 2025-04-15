@@ -30,14 +30,14 @@ export function InvestmentDetails({
   const [streamAmount, setStreamAmount] = useState('');
   const { createStream, loading: isStreaming, usdcxBalance } = useSuperfluid(fundAddress);
 
-  const formatAddress = (address: string): string => 
+  const formatAddress = (address: string): string =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   const copyToClipboard = async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Address copied to clipboard');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err: unknown) {
       toast.error('Failed to copy address');
     }
@@ -62,49 +62,50 @@ export function InvestmentDetails({
   };
 
   const AddressRow = ({ label, address, showFull = false }: AddressRowProps) => (
-    <div className="flex flex-col py-3 border-b border-white/[0.05] space-y-1">
-      <span className="text-white/60 text-sm">{label}</span>
-      <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 group">
-        <code className="text-white/90 text-xs sm:text-sm font-mono break-all">
+    <div className="flex flex-col space-y-1 border-b border-white/[0.05] py-3">
+      <span className="text-sm text-white/60">{label}</span>
+      <div className="group flex items-center gap-2 rounded-lg bg-black/20 p-2">
+        <code className="break-all font-mono text-xs text-white/90 sm:text-sm">
           {showFull ? address : formatAddress(address)}
         </code>
         <button
           onClick={() => copyToClipboard(address)}
-          className="p-1.5 hover:bg-white/10 rounded-md transition-colors flex-shrink-0 opacity-50 group-hover:opacity-100"
+          className="flex-shrink-0 rounded-md p-1.5 opacity-50 transition-colors hover:bg-white/10 group-hover:opacity-100"
           title="Copy address"
         >
-          <Copy className="w-3 h-3 text-white" />
+          <Copy className="h-3 w-3 text-white" />
         </button>
       </div>
     </div>
   );
 
-  const AddressDisplay = useMemo(() => (
-    <div className="bg-black/20 rounded-lg p-4 space-y-2">
-      <AddressRow label="Fund Address" address={fundAddress} showFull={true} />
-      {fundDetails?.manager && (
-        <AddressRow label="Fund Manager" address={fundDetails.manager} />
-      )}
-      <div className="flex justify-between items-center pt-3">
-        <span className="text-white/60">Fund Fee</span>
-        <span className="text-white font-medium">
-          {fundDetails ? `${fundDetails.profitSharingPercentage}%` : '--'}
-        </span>
+  const AddressDisplay = useMemo(
+    () => (
+      <div className="space-y-2 rounded-lg bg-black/20 p-4">
+        <AddressRow label="Fund Address" address={fundAddress} showFull={true} />
+        {fundDetails?.manager && <AddressRow label="Fund Manager" address={fundDetails.manager} />}
+        <div className="flex items-center justify-between pt-3">
+          <span className="text-white/60">Fund Fee</span>
+          <span className="font-medium text-white">
+            {fundDetails ? `${fundDetails.profitSharingPercentage}%` : '--'}
+          </span>
+        </div>
       </div>
-    </div>
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [fundAddress, fundDetails, formatAddress, copyToClipboard]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    ),
+    [fundAddress, fundDetails, formatAddress, copyToClipboard]
+  );
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/[0.03] rounded-xl p-6 backdrop-blur-sm border border-white/[0.08] sticky top-24"
+      className="sticky top-24 rounded-xl border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-sm"
     >
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Investment Details</h3>
-        <div className="flex items-center gap-2 text-green-400 text-sm">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+        <div className="flex items-center gap-2 text-sm text-green-400">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
           <span>Open for Investment</span>
         </div>
       </div>
@@ -113,32 +114,30 @@ export function InvestmentDetails({
         {AddressDisplay}
 
         {!isConnected ? (
-          <div className="text-center py-6">
-            <Wallet className="w-12 h-12 text-fluid-primary mx-auto mb-3" />
-            <h4 className="text-white font-medium mb-2">Connect Your Wallet</h4>
-            <p className="text-white/60 text-sm mb-4">
-              Connect your wallet to start investing
-            </p>
+          <div className="py-6 text-center">
+            <Wallet className="mx-auto mb-3 h-12 w-12 text-fluid-primary" />
+            <h4 className="mb-2 font-medium text-white">Connect Your Wallet</h4>
+            <p className="mb-4 text-sm text-white/60">Connect your wallet to start investing</p>
             <div className="flex justify-center">
-              <ConnectButton 
+              <ConnectButton
                 chainStatus="icon"
                 showBalance={false}
                 accountStatus={{
-                  smallScreen: "avatar",
-                  largeScreen: "full",
+                  smallScreen: 'avatar',
+                  largeScreen: 'full',
                 }}
               />
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="text-sm text-white/60 flex justify-between items-center">
+            <div className="flex items-center justify-between text-sm text-white/60">
               <span>Available Balance:</span>
               <span>{parseFloat(usdcxBalance).toFixed(2)} USDCx</span>
             </div>
 
             <div>
-              <label htmlFor="streamAmount" className="block text-sm text-white/60 mb-2">
+              <label htmlFor="streamAmount" className="mb-2 block text-sm text-white/60">
                 Monthly Investment Amount
               </label>
               <div className="relative">
@@ -146,15 +145,13 @@ export function InvestmentDetails({
                   id="streamAmount"
                   type="number"
                   value={streamAmount}
-                  onChange={(e) => setStreamAmount(e.target.value)}
+                  onChange={e => setStreamAmount(e.target.value)}
                   placeholder="Enter amount"
-                  className="w-full h-12 px-4 rounded-lg bg-black/20 border border-white/10 
-                          text-white placeholder-white/40 focus:outline-none focus:border-fluid-primary
-                          transition-colors"
+                  className="h-12 w-full rounded-lg border border-white/10 bg-black/20 px-4 text-white placeholder-white/40 transition-colors focus:border-fluid-primary focus:outline-none"
                   min="0"
                   step="0.01"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-white/40">
                   USDC/month
                 </div>
               </div>
@@ -163,16 +160,14 @@ export function InvestmentDetails({
             <button
               onClick={handleCreateStream}
               disabled={isStreaming || !streamAmount}
-              className="w-full h-12 rounded-lg bg-fluid-primary text-white font-semibold
-                      hover:bg-fluid-primary/90 transition-all duration-200 disabled:opacity-50
-                      disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-fluid-primary font-semibold text-white transition-all duration-200 hover:bg-fluid-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isStreaming ? (
                 <>
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full"
+                    transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                    className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white"
                   />
                   <span>Processing...</span>
                 </>

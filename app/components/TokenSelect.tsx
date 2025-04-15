@@ -28,23 +28,18 @@ export const TokenSelect = ({ value, onChange, tokens }: TokenSelectProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+        className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
       >
-        <span className="text-white font-medium">
-          {value ? value.symbol : 'Select Token'}
-        </span>
-        <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="font-medium text-white">{value ? value.symbol : 'Select Token'}</span>
+        <ChevronDown
+          className={`h-4 w-4 text-white/60 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
       </button>
-      
+
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 rounded-lg border border-white/10 shadow-xl z-50">
-          <div className="max-h-[200px] overflow-y-auto py-2
-                         [&::-webkit-scrollbar]:w-2
-                         [&::-webkit-scrollbar-track]:bg-transparent
-                         [&::-webkit-scrollbar-thumb]:bg-white/10
-                         [&::-webkit-scrollbar-thumb]:rounded-full
-                         [&:hover::-webkit-scrollbar-thumb]:bg-white/20">
-            {tokens.map((token) => (
+        <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl">
+          <div className="max-h-[200px] overflow-y-auto py-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2 [&:hover::-webkit-scrollbar-thumb]:bg-white/20">
+            {tokens.map(token => (
               <button
                 key={token.address}
                 type="button"
@@ -52,7 +47,7 @@ export const TokenSelect = ({ value, onChange, tokens }: TokenSelectProps) => {
                   onChange(token);
                   setIsOpen(false);
                 }}
-                className={`w-full px-4 py-2 text-left hover:bg-white/5 transition-colors ${
+                className={`w-full px-4 py-2 text-left transition-colors hover:bg-white/5 ${
                   token.address === value?.address ? 'text-fluid-primary' : 'text-white'
                 }`}
               >

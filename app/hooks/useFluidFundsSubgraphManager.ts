@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
 import { logger } from '@/app/utils/logger';
@@ -43,7 +43,7 @@ export function useFluidFundsSubgraphManager(pollInterval: number = 120000) {
   });
 
   const fetchFunds = useCallback(async () => {
-    setData((prev) => ({ ...prev, loading: true }));
+    setData(prev => ({ ...prev, loading: true }));
     try {
       const query = `
         query Funds {
@@ -77,7 +77,7 @@ export function useFluidFundsSubgraphManager(pollInterval: number = 120000) {
       const funds: SubgraphFund[] = result.data?.fundCreateds || [];
       logger.log('Subgraph funds fetched:', { funds, timestamp: Date.now() });
 
-      const formattedFunds: FundInfo[] = funds.map((fund) => ({
+      const formattedFunds: FundInfo[] = funds.map(fund => ({
         id: fund.id,
         address: fund.fundAddress as `0x${string}`,
         name: fund.name,
@@ -94,7 +94,7 @@ export function useFluidFundsSubgraphManager(pollInterval: number = 120000) {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch funds';
       logger.error('Error fetching funds:', { error: err, timestamp: Date.now() });
-      setData((prev) => ({ ...prev, loading: false, error: errorMsg }));
+      setData(prev => ({ ...prev, loading: false, error: errorMsg }));
     }
   }, []);
 
