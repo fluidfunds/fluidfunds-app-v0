@@ -1,6 +1,6 @@
 export interface WalletData {
   socialName: string;
-  address: string;
+  address: `0x${string}`;
   totalValue: number;
   performance: number; // 24h performance
   last30dPerformance: number; // last 30 days performance
@@ -169,7 +169,7 @@ export async function fetchWalletDataForProfile(profile: {
   // The rank value will be updated later in the UI after sorting
   return Promise.resolve({
     socialName: profile.socialName,
-    address: primaryAddress,
+    address: primaryAddress as `0x${string}`,
     totalValue,
     performance,
     last30dPerformance,

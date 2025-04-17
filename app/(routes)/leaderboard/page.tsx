@@ -5,16 +5,19 @@ import Link from 'next/link';
 import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
 import { useFlowingBalance } from '@/app/hooks/useFlowingBalance';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import { cn } from '@/app/utils/styles';
+import { fetchWalletDataForProfile, WalletData } from '@/app/utils/getWalletData';
+import { useRouter } from 'next/navigation';
 
 // Helper function to format a bigint balance (e.g. to 4 decimal places)
 const formatBalance = (balance: bigint): string => {
   const formatted = formatEther(balance);
-  return parseFloat(formatted)
-    .toFixed(4)
-    .replace(/\.?0+$/, '');
+  return parseFloat(formatted).toLocaleString('en-US', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  });
 };
 
 function formatCurrency(value: number) {
@@ -83,6 +86,10 @@ const LeaderBoardStats = () => {
   );
 };
 
+enum EntityType {
+  Fund = 'fund',
+  Wallet = 'wallet',
+}
 // Adjusted interface so that metadata and its performanceMetrics are optional.
 interface FundWithMetadata {
   address: `0x${string}`;
@@ -98,22 +105,119 @@ interface FundWithMetadata {
   };
   // If metadata is missing, the fund might have a top‑level name.
   name?: string;
+  type: EntityType.Fund;
+}
+
+interface WalletLeaderboardData extends WalletData {
+  metadata?: {
+    performanceMetrics?: {
+      tvl: string;
+    };
+  };
+  type: EntityType.Wallet;
 }
 
 export default function LeaderboardPage() {
   // Use the subgraph to get all funds and the count of available funds.
   // Make sure your useFluidFundsSubgraphManager hook returns an object with { funds, loading, error }
   const { funds, loading, error } = useFluidFundsSubgraphManager();
+  const [trackedWallets, setTrackedWallets] = useState<WalletLeaderboardData[]>([]);
+
+  // Move trackedWalletsData into useMemo
+  const trackedWalletsData = useMemo(
+    () => [
+      { socialName: 'basefreakz', addresses: ['0xcde9f00116bffe9852b2cd4295446ae5fc51ad0a'] },
+      {
+        socialName: 'brycekrispy.eth',
+        addresses: [
+          '0x8ce92c44b81d6b7366a66f25bbf078bfd78829d2',
+          '0xcdb53d17f1b829030b4fe0e3e106c2d4db33ac2a',
+        ],
+      },
+      {
+        socialName: 'bleu.eth',
+        addresses: [
+          '0xc4239467a62edaad4a098235a6754579e6662566',
+          '0x38a0d87bdeac77ac859ac910a588cf80a05d854d',
+          '0xe9dadd9ded105d67e6cb7aadc48be0c2d45df652',
+        ],
+      },
+      {
+        socialName: 'maretus',
+        addresses: [
+          '0x59140f80e6146d3e23a3f44c3c47c9164e4b4a98',
+          '0x2225349cdf7f16156d7e4fd5eef774fef180cec1',
+          '0xd9c0e850a086aa5febd40f2668c5d7e15d7d74a2',
+          '0xcb69c793478a7355178979ae0be453bf61c378ee',
+        ],
+      },
+      { socialName: 'capybara', addresses: ['0xb77771e01bcb358f9468df78ddcb9f0cb062a772'] },
+      {
+        socialName: 'cojo.eth',
+        addresses: [
+          '0xe943ca883ef3294e0fc55a1a14591abead1b5927',
+          '0xcaaa26c5498de67466e6823ef69718feb04c2952',
+        ],
+      },
+      {
+        socialName: 'renatov.eth',
+        addresses: [
+          '0xd47cc86868092fb56f56d78919c207ecf7593060',
+          '0x6046d412b45dace6c963c7c3c892ad951ec97e57',
+        ],
+      },
+      {
+        socialName: 'tylerfoust.eth',
+        addresses: [
+          '0x0b001c532a98b637f5b66c55f02fc9c6645e54ca',
+          '0x3d335600833f6d4075184ea5350a3f37f3b82ce1',
+        ],
+      },
+    ],
+    []
+  );
+
+  // Update useEffect to include trackedWalletsData in dependencies
+  useEffect(() => {
+    async function fetchTrackedWallets() {
+      const results = await Promise.all(
+        trackedWalletsData.map(async profile => {
+          return await fetchWalletDataForProfile(profile);
+        })
+      );
+      results.sort((a, b) => b.totalValue - a.totalValue);
+      results.forEach((wallet, index) => (wallet.rank = index + 1));
+      // make the shape of the data the same as the funds
+      const formattedWallets = results.map(wallet => ({
+        ...wallet,
+        metadata: {
+          performanceMetrics: {
+            tvl: wallet.totalValue.toString(),
+          },
+        },
+        type: EntityType.Wallet,
+      }));
+      setTrackedWallets(formattedWallets as WalletLeaderboardData[]);
+    }
+    fetchTrackedWallets();
+  }, [trackedWalletsData]);
+
+  const fundsWithType: FundWithMetadata[] = useMemo(() => {
+    return funds.map(fund => ({
+      ...fund,
+      type: EntityType.Fund,
+    }));
+  }, [funds]);
 
   // Sort funds by fallback TVL (using default "0" if metrics aren't available)
-  let sortedFunds = funds.sort((a: FundWithMetadata, b: FundWithMetadata) => {
+  const FundsAndWallets = [...fundsWithType, ...trackedWallets].sort((a, b) => {
     const tvlA = parseFloat(a.metadata?.performanceMetrics?.tvl ?? '0');
     const tvlB = parseFloat(b.metadata?.performanceMetrics?.tvl ?? '0');
     return tvlA - tvlB;
   });
 
-  sortedFunds = [...sortedFunds].reverse();
-  console.log('sortedFunds: ', sortedFunds);
+  const sortedFundsAndWallets = [...FundsAndWallets].reverse();
+  console.log('sortedFunds: ', sortedFundsAndWallets);
 
   if (loading) {
     return (
@@ -179,15 +283,51 @@ export default function LeaderboardPage() {
               <div className="text-right">Rank</div>
             </div>
 
-            {sortedFunds.map((fund: FundWithMetadata, index: number) => (
-              <FundRow key={fund.address} fund={fund} rank={index + 1} />
-            ))}
+            {sortedFundsAndWallets.map(
+              (fund: FundWithMetadata | WalletLeaderboardData, index: number) =>
+                fund.type === EntityType.Fund ? (
+                  <FundRow key={fund.address} fund={fund} rank={index + 1} />
+                ) : (
+                  <WalletRow key={fund.address} wallet={fund} rank={index + 1} />
+                )
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+interface WalletRowProps {
+  wallet: WalletLeaderboardData;
+  rank: number;
+}
+const WalletRow = ({ wallet, rank }: WalletRowProps) => {
+  const displayBalance = wallet.totalValue.toLocaleString('en-US', {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  });
+
+  return (
+    <Link href={`/wallet/${wallet.address}`}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: rank * 0.1 }}
+        className="group grid cursor-pointer grid-cols-6 gap-4 p-4 text-fluid-white transition-colors hover:bg-fluid-white/[0.08]"
+      >
+        <div className="col-span-2 flex items-center gap-2 font-medium">
+          {wallet.socialName}
+          <span className="opacity-0 transition-opacity group-hover:opacity-100">→</span>
+        </div>
+        <div className="text-right">${displayBalance}</div>
+        <div className="text-right">{wallet.performance}</div>
+        <div className="text-right text-green-400">+{wallet.performance}%</div>
+        <div className="text-right font-medium">#{rank}</div>
+      </motion.div>
+    </Link>
+  );
+};
 
 interface FundRowProps {
   fund: FundWithMetadata;
