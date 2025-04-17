@@ -1,21 +1,21 @@
-import { createPublicClient, createWalletClient, custom, http } from 'viem'
-import { mainnet } from 'viem/chains'
+import { createPublicClient, createWalletClient, custom, http } from 'viem';
+import { mainnet } from 'viem/chains';
 
 // Public client for reading from the blockchain
 export const publicClient = createPublicClient({
   chain: mainnet,
-  transport: http()
-})
+  transport: http(),
+});
 
 // Function to create wallet client when user connects
 export const createWallet = () => {
-  if (!window.ethereum) throw new Error('No MetaMask found')
-  
+  if (!window.ethereum) throw new Error('No MetaMask found');
+
   return createWalletClient({
     chain: mainnet,
-    transport: custom(window.ethereum)
-  })
-}
+    transport: custom(window.ethereum),
+  });
+};
 
 // Define ethereum provider interface
 type ProviderMessage = {
@@ -34,8 +34,8 @@ type ProviderRequest = {
 };
 
 interface EthereumProvider {
-  request: <T extends keyof ProviderRequest>(args: { 
-    method: T; 
+  request: <T extends keyof ProviderRequest>(args: {
+    method: T;
     params?: ProviderRequest[T];
   }) => Promise<string[]>;
   isMetaMask?: boolean;
@@ -53,21 +53,21 @@ declare global {
 // Connect wallet and get address
 export const connectWallet = async () => {
   if (typeof window.ethereum === 'undefined') {
-    throw new Error('Please install MetaMask to connect your wallet')
+    throw new Error('Please install MetaMask to connect your wallet');
   }
 
   try {
-    const accounts = await window.ethereum.request({ 
-      method: 'eth_requestAccounts' 
-    })
-    
+    const accounts = await window.ethereum.request({
+      method: 'eth_requestAccounts',
+    });
+
     return {
-      address: accounts[0]
-    }
+      address: accounts[0],
+    };
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
-    throw new Error('Failed to connect wallet')
+    throw new Error('Failed to connect wallet');
   }
-} 
+};

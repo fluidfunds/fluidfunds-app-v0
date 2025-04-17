@@ -52,22 +52,24 @@ export const useTrading = (fundAddress: Address) => {
       try {
         // Create an array of token addresses to check
         const tokenAddresses = [
-          USDC_ADDRESS, 
+          USDC_ADDRESS,
           USDCx_ADDRESS, // Add Super Token
           DAI_ADDRESS,
           LTC_ADDRESS,
           ETH_ADDRESS,
           BTC_ADDRESS,
           AAVE_ADDRESS,
-          DOGE_ADDRESS
+          DOGE_ADDRESS,
         ];
 
         // This would be replaced with actual RPC calls to get balances
         // For example:
         const balances = await Promise.all(
-          tokenAddresses.map(async (address) => {
+          tokenAddresses.map(async address => {
             try {
-              const response = await fetch(`/api/token-balance?tokenAddress=${address}&account=${fundAddress}`);
+              const response = await fetch(
+                `/api/token-balance?tokenAddress=${address}&account=${fundAddress}`
+              );
               if (!response.ok) throw new Error('Failed to fetch balance');
               const data = await response.json();
               return { address, balance: BigInt(data.balance) };
@@ -83,7 +85,7 @@ export const useTrading = (fundAddress: Address) => {
         balances.forEach(({ address, balance }) => {
           balanceMap[address.toLowerCase()] = balance;
         });
-        
+
         setTokenBalances(balanceMap);
       } catch (err) {
         console.error('Error fetching token balances:', err);
@@ -160,16 +162,11 @@ export const useTrading = (fundAddress: Address) => {
     return tokenBalances[tokenAddress.toLowerCase()] || 0n;
   };
 
-  const combinedUSDCBalance = 
-    (tokenBalances[USDC_ADDRESS.toLowerCase()] || 0n) + 
+  const combinedUSDCBalance =
+    (tokenBalances[USDC_ADDRESS.toLowerCase()] || 0n) +
     (tokenBalances[USDCx_ADDRESS.toLowerCase()] || 0n);
 
-  const swap = async ({
-    tokenIn,
-    tokenOut,
-    amountIn,
-    poolFee = 3000
-  }: SwapParams) => {
+  const swap = async ({ tokenIn, tokenOut, amountIn, poolFee = 3000 }: SwapParams) => {
     if (!tokenIn || !tokenOut || !amountIn) {
       throw new Error('Missing required parameters for swap');
     }
@@ -185,12 +182,12 @@ export const useTrading = (fundAddress: Address) => {
         address: fundAddress,
         functionName: 'executeTrade',
         args: [
-          tokenInAddress,         // tokenIn address
-          tokenOutAddress,        // tokenOut address
+          tokenInAddress, // tokenIn address
+          tokenOutAddress, // tokenOut address
           amountIn,
-          0n,                     // minAmountOut: 0 for testnet
-          poolFee                 // poolFee: 3000 (0.3%) as default
-        ]
+          0n, // minAmountOut: 0 for testnet
+          poolFee, // poolFee: 3000 (0.3%) as default
+        ],
       } as const;
 
       console.log('Executing trade with params:', {
@@ -199,7 +196,7 @@ export const useTrading = (fundAddress: Address) => {
         amountIn: BigInt(amountIn),
         minAmountOut: '0',
         poolFee: poolFee.toString(),
-        fundAddress
+        fundAddress,
       });
 
       const hash = await writeContract(params);

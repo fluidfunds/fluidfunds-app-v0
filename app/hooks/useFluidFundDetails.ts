@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect } from 'react';
 import { FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
 import { logger } from '@/app/utils/logger';
@@ -32,7 +32,7 @@ export function useFluidFundDetails(fundAddress: `0x${string}`) {
   useEffect(() => {
     const fetchFundDetails = async () => {
       setData(prev => ({ ...prev, loading: true }));
-      
+
       try {
         const query = `
           query FundDetails($fundAddress: String!) {
@@ -59,7 +59,7 @@ export function useFluidFundDetails(fundAddress: `0x${string}`) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query,
-            variables: { fundAddress: fundAddress.toLowerCase() }
+            variables: { fundAddress: fundAddress.toLowerCase() },
           }),
         });
 
@@ -90,16 +90,15 @@ export function useFluidFundDetails(fundAddress: `0x${string}`) {
         setData({
           fund: formattedFund,
           loading: false,
-          error: null
+          error: null,
         });
-
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to fetch fund details';
         logger.error('Error fetching fund details:', { error: err, timestamp: Date.now() });
         setData(prev => ({
           ...prev,
           loading: false,
-          error: errorMsg
+          error: errorMsg,
         }));
       }
     };

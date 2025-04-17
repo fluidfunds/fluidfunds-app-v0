@@ -24,13 +24,10 @@ body {
 
 @layer components {
   .nav-button {
-    @apply rounded-lg border border-solid border-[rgba(255,255,255,0.1)] 
-           bg-[rgba(255,255,255,0.06)] px-4 py-2 text-sm font-medium
-           transition-colors hover:bg-[rgba(255,255,255,0.1)];
+    @apply rounded-lg border border-solid border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.06)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[rgba(255,255,255,0.1)];
   }
 
   .primary-button {
-    @apply rounded-lg bg-[rgb(37,202,172)] px-4 py-2 text-sm font-medium
-           text-black transition-colors hover:bg-[rgb(31,171,146)];
+    @apply rounded-lg bg-[rgb(37,202,172)] px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-[rgb(31,171,146)];
   }
 }

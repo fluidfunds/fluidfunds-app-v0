@@ -1,47 +1,47 @@
 export interface FundMetadata {
-  name: string
-  description: string
-  image: string
-  manager: string
+  name: string;
+  description: string;
+  image: string;
+  manager: string;
   socialLinks?: {
-    twitter?: string
-    discord?: string
-    telegram?: string
-  }
-  strategy?: string
+    twitter?: string;
+    discord?: string;
+    telegram?: string;
+  };
+  strategy?: string;
   performanceMetrics?: {
-    tvl?: string
-    returns?: string
-    investors?: number
-  }
-  updatedAt: number
+    tvl?: string;
+    returns?: string;
+    investors?: number;
+  };
+  updatedAt: number;
 }
 
 export interface Fund extends FundMetadata {
-  address: string
-  verified: boolean
-  metadataUri: string
+  address: string;
+  verified: boolean;
+  metadataUri: string;
 }
 
 export interface FundInfo {
-  address: string
-  verified: boolean
-  name: string
-  manager: string
-  description: string
-  image?: string
-  strategy: string
+  address: string;
+  verified: boolean;
+  name: string;
+  manager: string;
+  description: string;
+  image?: string;
+  strategy: string;
   socialLinks: {
-    twitter?: string
-    discord?: string
-    telegram?: string
-  }
+    twitter?: string;
+    discord?: string;
+    telegram?: string;
+  };
   performanceMetrics: {
-    tvl: string
-    returns: string
-    investors: number
-  }
-  updatedAt: number
-  metadataUri: string
-  blockNumber: number
-} 
+    tvl: string;
+    returns: string;
+    investors: number;
+  };
+  updatedAt: number;
+  metadataUri: string;
+  blockNumber: number;
+}
