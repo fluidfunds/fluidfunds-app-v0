@@ -187,7 +187,6 @@ export default function DashboardPage() {
     };
   }, [subgraphFunds, fundsLoading, fundsError, address, startTransition]);
 
-
   const handleFundCreated = useCallback(async () => {
     startTransition(() => {
       setIsCreateModalOpen(false); // Close modal immediately to prevent reload

@@ -1,12 +1,13 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Trophy, TrendingUp, Users, ArrowLeft } from 'lucide-react';
+import { Trophy, ArrowLeft, BarChart2, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
 import { useFlowingBalance } from '@/app/hooks/useFlowingBalance';
 import { useMemo } from 'react';
 import { formatEther } from 'viem';
+import { cn } from '@/app/utils/styles';
 
 // Helper function to format a bigint balance (e.g. to 4 decimal places)
 const formatBalance = (balance: bigint): string => {
@@ -14,6 +15,72 @@ const formatBalance = (balance: bigint): string => {
   return parseFloat(formatted)
     .toFixed(4)
     .replace(/\.?0+$/, '');
+};
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+const LeaderBoardStats = () => {
+  const stats = [
+    {
+      name: 'Top Performers',
+      value: 100,
+      icon: <Trophy className="h-4 w-4 text-amber-400" />,
+      iconBackground: 'bg-amber-500/20',
+      description: 'Discover the highest performing wallets based on historical returns',
+      subDescription: 'and tracked wallet numbers',
+    },
+    {
+      name: 'Active Predictions',
+      value: 4,
+      icon: <Activity className="h-4 w-4 text-blue-400" />,
+      iconBackground: 'bg-blue-500/20',
+      description: 'Currently running wallet performance predictions',
+      subDescription: 'LIVE predictions status',
+    },
+    {
+      name: 'Total Bets',
+      value: 1000000,
+      icon: <BarChart2 className="h-4 w-4 text-green-400" />,
+      iconBackground: 'bg-green-500/20',
+      description: 'Total value locked in prediction markets',
+      subDescription: 'value across all predictions',
+    },
+  ];
+  return (
+    <div className="mb-8 mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+      {stats.map((stat, index) => (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1 }}
+          key={stat.name}
+          className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10"
+        >
+          <div className="mb-3 flex items-center gap-2">
+            <div
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-full',
+                stat.iconBackground
+              )}
+            >
+              {stat.icon}
+            </div>
+            <h3 className="font-medium text-white">{stat.name}</h3>
+          </div>
+          <p className="mb-2 text-2xl font-bold text-white">{formatCurrency(stat.value)}</p>
+          <p className="text-sm text-white/70">{stat.description}</p>
+          <p className="mt-1 text-xs text-white/50">{stat.subDescription}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
 };
 
 // Adjusted interface so that metadata and its performanceMetrics are optional.
@@ -81,7 +148,7 @@ export default function LeaderboardPage() {
           </Link>
         </motion.div>
 
-        <div className="text-center">
+        <div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -93,12 +160,14 @@ export default function LeaderboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mx-auto max-w-2xl text-fluid-white-70"
+            className="text-fluid-white-70"
           >
             Track the performance of all FluidFunds and discover the top performing investment
             opportunities
           </motion.p>
         </div>
+
+        <LeaderBoardStats />
 
         <div className="mt-12">
           <div className="overflow-hidden rounded-xl bg-fluid-white/5">
@@ -114,47 +183,6 @@ export default function LeaderboardPage() {
               <FundRow key={fund.address} fund={fund} rank={index + 1} />
             ))}
           </div>
-        </div>
-
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="rounded-xl bg-fluid-white/5 p-6"
-          >
-            <Trophy className="mb-4 h-8 w-8 text-yellow-500" />
-            <h3 className="mb-2 font-medium text-fluid-white">Top Performers</h3>
-            <p className="text-sm text-fluid-white-70">
-              Discover the highest performing funds based on historical returns
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-xl bg-fluid-white/5 p-6"
-          >
-            <TrendingUp className="mb-4 h-8 w-8 text-green-500" />
-            <h3 className="mb-2 font-medium text-fluid-white">Investment Volume</h3>
-            <p className="text-sm text-fluid-white-70">
-              Track total investments and fund growth over time
-            </p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="rounded-xl bg-fluid-white/5 p-6"
-          >
-            <Users className="mb-4 h-8 w-8 text-blue-500" />
-            <h3 className="mb-2 font-medium text-fluid-white">Investor Count</h3>
-            <p className="text-sm text-fluid-white-70">
-              See which funds are attracting the most investors
-            </p>
-          </motion.div>
         </div>
       </div>
     </div>
