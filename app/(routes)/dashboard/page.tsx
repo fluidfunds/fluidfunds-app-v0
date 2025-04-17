@@ -2,12 +2,10 @@
 import { useEffect, useState, useCallback, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { Logo } from '@/app/components/icons/Logo';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import { CreateFundModal } from '@/app/components/CreateFundModal';
 import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { logger } from '@/app/utils/logger';
 import { formatEther } from 'viem'; // Use viem's built-in types
 import { Toaster, toast } from 'sonner';
@@ -61,7 +59,6 @@ const gradientStyles = {
 export default function DashboardPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -190,15 +187,6 @@ export default function DashboardPage() {
     };
   }, [subgraphFunds, fundsLoading, fundsError, address, startTransition]);
 
-  const handleDisconnect = useCallback(async () => {
-    try {
-      await disconnect();
-      router.replace('/');
-    } catch (error) {
-      console.error('Error disconnecting:', error);
-      toast.error('Failed to disconnect wallet');
-    }
-  }, [disconnect, router]);
 
   const handleFundCreated = useCallback(async () => {
     startTransition(() => {
@@ -297,30 +285,6 @@ export default function DashboardPage() {
         style={gradientStyles.overlay.style}
       />
       {/* Updated Header Logo Section */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-black/30 backdrop-blur-lg">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6">
-          <Link href="/" className="group flex items-center gap-2 sm:gap-3">
-            <Logo className="h-8 w-8 text-fluid-primary transition-transform group-hover:scale-110 sm:h-10 sm:w-10" />
-            <span className="text-lg font-bold text-fluid-primary drop-shadow-[0_0_15px_rgba(37,202,172,0.2)] sm:text-2xl">
-              FluidFunds
-            </span>
-          </Link>
-
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="rounded-full px-2 py-2 sm:px-4" style={gradientStyles.glass}>
-              <span className="text-xs text-white/80 sm:text-sm">
-                {`${address?.slice(0, 6)}...${address?.slice(-4)}`}
-              </span>
-            </div>
-            <button
-              onClick={handleDisconnect}
-              className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400 transition-all duration-300 hover:bg-red-500/20 sm:px-4"
-            >
-              Disconnect
-            </button>
-          </div>
-        </div>
-      </header>
       <main className="container mx-auto px-4 py-8 sm:px-6 sm:py-12">
         {/* Enhanced Dashboard Header */}
         <div className="relative mb-8 space-y-4 text-center sm:mb-16 sm:space-y-6">

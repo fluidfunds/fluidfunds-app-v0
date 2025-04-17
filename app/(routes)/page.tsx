@@ -1,11 +1,10 @@
 'use client';
 import { motion } from 'framer-motion';
-import Header from './components/Header';
-import ProcessSteps from './components/ProcessSteps';
+import ProcessSteps from '../components/ProcessSteps';
 import ParticleBackground from '@/app/components/ParticleBackground';
-import HeroCarousel from './components/HeroCarousel';
+import HeroCarousel from '../components/HeroCarousel';
 import { useEffect, useState, memo, useCallback } from 'react';
-import { CustomConnectButton } from './components/CustomConnectButton';
+import { CustomConnectButton } from '../components/CustomConnectButton';
 import FundCard from '@/app/components/FundCard';
 import { useAccount } from 'wagmi';
 import { useRouter } from 'next/navigation';
@@ -141,7 +140,6 @@ export default function Home() {
             mixBlendMode: 'screen',
           }}
         />
-        <Header />
         <main className="relative z-10 flex flex-col items-center justify-center px-6 pb-[100px] pt-[180px]">
           <div className="flex w-full max-w-7xl flex-col items-center gap-[35px]">
             <div
@@ -206,8 +204,8 @@ export default function Home() {
               <ProcessSteps />
             </div>
 
-            <motion.div
-              className="mx-auto w-full max-w-4xl px-6 py-16"
+            <motion.a
+              className="mx-auto block w-full max-w-4xl px-6 py-16"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
@@ -278,7 +276,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </motion.a>
 
             <motion.div
               id="funds"
@@ -329,7 +327,6 @@ export default function Home() {
           mixBlendMode: 'screen',
         }}
       />
-      <Header />
       <main className="relative z-10 flex flex-col items-center justify-center px-6 pb-[100px] pt-[180px]">
         <div className="flex w-full max-w-7xl flex-col items-center gap-[35px]">
           <div
