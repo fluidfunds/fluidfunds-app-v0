@@ -1,5 +1,5 @@
-import { darkTheme } from '@rainbow-me/rainbowkit'
-import merge from 'lodash.merge'
+import { darkTheme } from '@rainbow-me/rainbowkit';
+import merge from 'lodash.merge';
 
 export const customTheme = merge(darkTheme(), {
   colors: {
@@ -17,4 +17,4 @@ export const customTheme = merge(darkTheme(), {
     connectButton: '12px',
     modal: '16px',
   },
-})
+});

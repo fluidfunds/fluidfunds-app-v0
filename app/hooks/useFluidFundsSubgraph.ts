@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useState, useEffect } from 'react';
 import { FLUID_FUNDS_SUBGRAPH_URL } from '@/app/config/contracts';
 import { logger } from '@/app/utils/logger';
@@ -60,18 +60,26 @@ export function useFluidFundsSubgraph(fundAddress?: `0x${string}`) {
         const inflows = result.data?.account?.inflows || [];
         logger.log('Subgraph data fetched:', { fundAddress, inflows, timestamp: Date.now() });
 
-        const activeStreams = inflows.map((inflow: { id: string; currentFlowRate: string; updatedAtTimestamp: string }) => ({
-          id: inflow.id,
-          flowRate: inflow.currentFlowRate,
-          updatedAtTimestamp: inflow.updatedAtTimestamp,
-        }));
+        const activeStreams = inflows.map(
+          (inflow: { id: string; currentFlowRate: string; updatedAtTimestamp: string }) => ({
+            id: inflow.id,
+            flowRate: inflow.currentFlowRate,
+            updatedAtTimestamp: inflow.updatedAtTimestamp,
+          })
+        );
 
-        const totalFlowRate = activeStreams.reduce((sum: bigint, stream: Stream) => sum + BigInt(stream.flowRate), BigInt(0));
+        const totalFlowRate = activeStreams.reduce(
+          (sum: bigint, stream: Stream) => sum + BigInt(stream.flowRate),
+          BigInt(0)
+        );
         const earliestStartDate = activeStreams.length
-          ? activeStreams.reduce((earliest: Date, stream: Stream) => {
-              const streamDate = new Date(Number(stream.updatedAtTimestamp) * 1000);
-              return streamDate < earliest ? streamDate : earliest;
-            }, new Date(Number(activeStreams[0].updatedAtTimestamp) * 1000))
+          ? activeStreams.reduce(
+              (earliest: Date, stream: Stream) => {
+                const streamDate = new Date(Number(stream.updatedAtTimestamp) * 1000);
+                return streamDate < earliest ? streamDate : earliest;
+              },
+              new Date(Number(activeStreams[0].updatedAtTimestamp) * 1000)
+            )
           : new Date();
 
         setData({ activeStreams, totalFlowRate, earliestStartDate });

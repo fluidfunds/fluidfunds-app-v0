@@ -4,7 +4,8 @@ export const SUPERFLUID_ADDRESSES = {
   USDCx: '0xb598E6C621618a9f63788816ffb50Ee2862D443B',
 } as const;
 
-export const SUPERFLUID_QUERY_URL = 'https://subgraph-endpoints.superfluid.dev/eth-sepolia/protocol-v1';
+export const SUPERFLUID_QUERY_URL =
+  'https://subgraph-endpoints.superfluid.dev/eth-sepolia/protocol-v1';
 
 export const CFAv1ForwarderABI = [
   {

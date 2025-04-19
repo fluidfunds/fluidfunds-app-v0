@@ -12,13 +12,15 @@ const ERC20_ABI = [
     payable: false,
     stateMutability: 'view',
     type: 'function',
-  }
+  },
 ] as const;
 
 // Create Viem client with the proper RPC URL using Alchemy key
 const client = createPublicClient({
   chain: sepolia,
-  transport: http(`https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`)
+  transport: http(
+    `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+  ),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,29 +29,29 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const tokenAddress = searchParams.get('tokenAddress');
     const account = searchParams.get('account');
-    
+
     if (!tokenAddress || !account) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Missing tokenAddress or account' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new NextResponse(JSON.stringify({ error: 'Missing tokenAddress or account' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-    
+
     // Format addresses
     const formattedTokenAddress = getAddress(tokenAddress);
     const formattedAccount = getAddress(account);
-    
+
     console.log(`Fetching balance for token ${formattedTokenAddress}, account ${formattedAccount}`);
-    
+
     // Get balance with explicit type
     try {
-      const balance = await client.readContract({
+      const balance = (await client.readContract({
         address: formattedTokenAddress,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
         args: [formattedAccount],
-      }) as bigint;
-      
+      })) as bigint;
+
       console.log(`Balance for ${formattedTokenAddress}: ${balance.toString()}`);
       return NextResponse.json({ balance: balance.toString() });
     } catch (contractError) {
@@ -57,7 +59,6 @@ export async function GET(request: NextRequest) {
       // Return 0 for balance instead of error for better UX
       return NextResponse.json({ balance: '0' });
     }
-    
   } catch (error) {
     console.error('Error fetching token balance:', error);
     // Return 0 for balance instead of error for better UX

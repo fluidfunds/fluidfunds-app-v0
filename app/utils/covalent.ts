@@ -3,7 +3,6 @@ import { logger } from './logger';
 const COVALENT_API_KEY = process.env.NEXT_PUBLIC_COVALENT_API_KEY;
 const COVALENT_BASE_URL = 'https://api.covalenthq.com/v1';
 
-
 // Define interfaces for Covalent API responses
 export interface TokenBalance {
   contract_decimals: number;
@@ -73,50 +72,53 @@ export interface HistoricalPortfolioResponse {
  * @param chainId Chain ID (default: eth-sepolia)
  * @returns Array of token balances
  */
-export async function getFundBalances(address: string, chainId: string = 'eth-sepolia'): Promise<TokenBalance[]> {
+export async function getFundBalances(
+  address: string,
+  chainId: string = 'eth-sepolia'
+): Promise<TokenBalance[]> {
   const apiKey = process.env.NEXT_PUBLIC_COVALENT_API_KEY;
-  
+
   if (!apiKey) {
     console.error('❌ Missing Covalent API key in environment variables');
     throw new Error('Missing Covalent API key');
   }
-  
+
   if (apiKey === 'your_covalent_api_key_here') {
     console.error('❌ Using placeholder API key. Please replace with your actual Covalent API key');
     throw new Error('Invalid Covalent API key');
   }
-  
+
   try {
     console.log(`🔍 Fetching balances for ${address} on chain ${chainId}`);
-    
+
     // Construct the API URL
     const url = `https://api.covalenthq.com/v1/${chainId}/address/${address}/balances_v2/`;
     console.log(`📡 API Request URL: ${url}`);
-    
+
     // Make the API request with proper auth
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${btoa(apiKey + ':')}`,
+        Authorization: `Basic ${btoa(apiKey + ':')}`,
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Covalent API error (${response.status}): ${errorText}`);
       throw new Error(`Covalent API error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log(`✅ Received response from Covalent API`);
-    
+
     // Check for API-level errors
     if (data.error) {
       console.error(`❌ Covalent API returned error: ${data.error_message}`);
       throw new Error(`Covalent API error: ${data.error_message}`);
     }
-    
+
     // Return the token balances
     return data.data.items as TokenBalance[];
   } catch (error) {
@@ -133,53 +135,55 @@ export async function getFundBalances(address: string, chainId: string = 'eth-se
  * @returns Historical portfolio data
  */
 export async function getPortfolioHistory(
-  address: string, 
+  address: string,
   chainId: string = 'eth-sepolia',
   days: number = 30
 ): Promise<HistoricalPortfolioResponse> {
   const apiKey = process.env.NEXT_PUBLIC_COVALENT_API_KEY;
-  
+
   if (!apiKey) {
     console.error('❌ Missing Covalent API key in environment variables');
     throw new Error('Missing Covalent API key');
   }
-  
+
   if (apiKey === 'your_covalent_api_key_here') {
     console.error('❌ Using placeholder API key. Please replace with your actual Covalent API key');
     throw new Error('Invalid Covalent API key');
   }
-  
+
   try {
-    console.log(`🔍 Fetching portfolio history for ${address} on chain ${chainId} for ${days} days`);
-    
+    console.log(
+      `🔍 Fetching portfolio history for ${address} on chain ${chainId} for ${days} days`
+    );
+
     // Construct the API URL
     const url = `https://api.covalenthq.com/v1/${chainId}/address/${address}/portfolio_v2/`;
     console.log(`📡 API Request URL: ${url}`);
-    
+
     // Make the API request with proper auth
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${btoa(apiKey + ':')}`,
+        Authorization: `Basic ${btoa(apiKey + ':')}`,
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Covalent API error (${response.status}): ${errorText}`);
       throw new Error(`Covalent API error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log(`✅ Received portfolio history from Covalent API`);
-    
+
     // Check for API-level errors
     if (data.error) {
       console.error(`❌ Covalent API returned error: ${data.error_message}`);
       throw new Error(`Covalent API error: ${data.error_message}`);
     }
-    
+
     // Return the portfolio history data
     return data.data as HistoricalPortfolioResponse;
   } catch (error) {
@@ -197,51 +201,51 @@ export async function getPortfolioHistory(
 export async function getTokenTransfers(
   address: string,
   chainId: string = 'eth-sepolia'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const apiKey = process.env.NEXT_PUBLIC_COVALENT_API_KEY;
-  
+
   if (!apiKey) {
     console.error('❌ Missing Covalent API key in environment variables');
     throw new Error('Missing Covalent API key');
   }
-  
+
   if (apiKey === 'your_covalent_api_key_here') {
     console.error('❌ Using placeholder API key. Please replace with your actual Covalent API key');
     throw new Error('Invalid Covalent API key');
   }
-  
+
   try {
     console.log(`🔍 Fetching token transfers for ${address} on chain ${chainId}`);
-    
+
     // Construct the API URL
     const url = `https://api.covalenthq.com/v1/${chainId}/address/${address}/transfers_v2/`;
     console.log(`📡 API Request URL: ${url}`);
-    
+
     // Make the API request with proper auth
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${btoa(apiKey + ':')}`,
+        Authorization: `Basic ${btoa(apiKey + ':')}`,
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Covalent API error (${response.status}): ${errorText}`);
       throw new Error(`Covalent API error: ${response.status} ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     console.log(`✅ Received token transfers from Covalent API`);
-    
+
     // Check for API-level errors
     if (data.error) {
       console.error(`❌ Covalent API returned error: ${data.error_message}`);
       throw new Error(`Covalent API error: ${data.error_message}`);
     }
-    
+
     // Return the token transfers data
     return data.data;
   } catch (error) {
@@ -310,8 +314,7 @@ export function getTokenSymbol(address: string): string {
 }
 
 export function isSwapEvent(logEvent: LogEvent): boolean {
-  return logEvent.decoded?.name === 'TokensSwapped' || 
-         logEvent.decoded?.name === 'TokenExchange';
+  return logEvent.decoded?.name === 'TokensSwapped' || logEvent.decoded?.name === 'TokenExchange';
 }
 
 export function parseSwapDetails(logEvent: LogEvent): {
@@ -322,7 +325,7 @@ export function parseSwapDetails(logEvent: LogEvent): {
 } | null {
   try {
     const params = logEvent.decoded.params;
-    
+
     // Find relevant parameters
     const tokenIn = params.find(p => p.name.includes('tokenIn'))?.value;
     const tokenOut = params.find(p => p.name.includes('tokenOut'))?.value;
@@ -343,4 +346,4 @@ export function parseSwapDetails(logEvent: LogEvent): {
     logger.error('Error parsing swap details:', error);
     return null;
   }
-} 
+}

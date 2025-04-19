@@ -57,12 +57,12 @@ export function useTradeHistory(fundAddress: `0x${string}`) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query,
-            variables: { fundAddress: fundAddress.toLowerCase() }
-          })
+            variables: { fundAddress: fundAddress.toLowerCase() },
+          }),
         });
 
         const data = await response.json();
-        
+
         if (data.errors) {
           throw new Error(data.errors[0].message);
         }
@@ -75,7 +75,7 @@ export function useTradeHistory(fundAddress: `0x${string}`) {
           amountOut: Number(formatEther(BigInt(swap.amountOut))),
           timestamp: new Date(Number(swap.blockTimestamp) * 1000),
           transactionHash: swap.transactionHash,
-          trader: swap.trader
+          trader: swap.trader,
         }));
 
         setTrades(processedTrades);

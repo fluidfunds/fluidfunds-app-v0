@@ -15,9 +15,7 @@ export const useGetPnL = (address: string, currency?: string) => {
       },
     };
     const response = await fetch(
-      `https://api.zerion.io/v1/wallets/${address}/pnl/?currency=${
-        currency || 'usd'
-      }`,
+      `https://api.zerion.io/v1/wallets/${address}/pnl/?currency=${currency || 'usd'}`,
       options
     );
     return response.json();

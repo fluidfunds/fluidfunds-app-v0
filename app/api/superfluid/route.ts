@@ -18,7 +18,10 @@ export async function POST(request: Request) {
     if (!response.ok) {
       const errorText = await response.text();
       logger.error('Subgraph fetch failed:', response.status, errorText);
-      return NextResponse.json({ error: `Subgraph fetch failed: ${errorText}` }, { status: response.status });
+      return NextResponse.json(
+        { error: `Subgraph fetch failed: ${errorText}` },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();

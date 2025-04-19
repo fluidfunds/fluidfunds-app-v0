@@ -9,10 +9,10 @@ export function useUserRole(fundAddress?: `0x${string}`) {
   const { address, isConnected } = useAccount();
   const [role, setRole] = useState<UserRole>('investor');
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Get all funds from the subgraph
   const { funds, loading: fundsLoading } = useFluidFundsSubgraphManager();
-  
+
   // Determine user role based on subgraph data
   const determineRole = useCallback(() => {
     if (!isConnected || !address || !fundAddress) {
@@ -64,15 +64,21 @@ export function useUserRole(fundAddress?: `0x${string}`) {
 
   // Debug information
   const debugInfo = {
-    currentFundDetails: fundAddress ? 
-      funds.find(fund => fund.address.toLowerCase() === fundAddress.toLowerCase()) : null,
-    userManagedFunds: isConnected && address ? 
-      funds.filter(fund => fund.manager.toLowerCase() === address.toLowerCase()) : [],
-    isCurrentFundManager: fundAddress && isConnected && address ? 
-      !!funds.find(fund => 
-        fund.address.toLowerCase() === fundAddress.toLowerCase() && 
-        fund.manager.toLowerCase() === address.toLowerCase()
-      ) : false
+    currentFundDetails: fundAddress
+      ? funds.find(fund => fund.address.toLowerCase() === fundAddress.toLowerCase())
+      : null,
+    userManagedFunds:
+      isConnected && address
+        ? funds.filter(fund => fund.manager.toLowerCase() === address.toLowerCase())
+        : [],
+    isCurrentFundManager:
+      fundAddress && isConnected && address
+        ? !!funds.find(
+            fund =>
+              fund.address.toLowerCase() === fundAddress.toLowerCase() &&
+              fund.manager.toLowerCase() === address.toLowerCase()
+          )
+        : false,
   };
 
   return {
@@ -80,6 +86,6 @@ export function useUserRole(fundAddress?: `0x${string}`) {
     isLoading: isLoading || fundsLoading,
     isManager: role === 'manager',
     // Add debug info
-    debug: debugInfo
+    debug: debugInfo,
   };
 }

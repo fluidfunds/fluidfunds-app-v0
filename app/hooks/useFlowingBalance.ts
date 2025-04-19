@@ -1,8 +1,8 @@
-"use client";
+'use client';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { logger } from '@/app/utils/logger';
 
-const ANIMATION_MINIMUM_STEP_TIME = 250; // 
+const ANIMATION_MINIMUM_STEP_TIME = 250; //
 
 export function useFlowingBalance(
   startingBalance: bigint,
@@ -25,7 +25,10 @@ export function useFlowingBalance(
     }
 
     const animationStep = (currentAnimationTimestamp: number) => {
-      if (currentAnimationTimestamp - lastAnimationTimestampRef.current < ANIMATION_MINIMUM_STEP_TIME) {
+      if (
+        currentAnimationTimestamp - lastAnimationTimestampRef.current <
+        ANIMATION_MINIMUM_STEP_TIME
+      ) {
         animationFrameIdRef.current = requestAnimationFrame(animationStep);
         return;
       }

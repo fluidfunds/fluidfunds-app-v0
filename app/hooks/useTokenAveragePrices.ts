@@ -16,34 +16,37 @@ export function useTokenAveragePrices(fundAddress: `0x${string}`) {
 
   useEffect(() => {
     if (!trades.length || loading) return;
-    
+
     setIsCalculating(true);
-    
+
     try {
-      const tokenPurchases: Record<string, { totalSpent: number; totalBought: number; symbol: string }> = {};
-      
+      const tokenPurchases: Record<
+        string,
+        { totalSpent: number; totalBought: number; symbol: string }
+      > = {};
+
       // Process each trade to calculate average prices
       trades.forEach(trade => {
         // We only care about tokens being bought (tokenOut)
         const tokenAddress = trade.tokenOut.toLowerCase();
         const tokenSymbol = getTokenSymbol(trade.tokenOut); // Implement this helper from your RecentTradingActivity
-        
+
         if (!tokenPurchases[tokenAddress]) {
           tokenPurchases[tokenAddress] = {
             totalSpent: 0,
             totalBought: 0,
-            symbol: tokenSymbol
+            symbol: tokenSymbol,
           };
         }
-        
+
         // Add the amounts from this trade
         tokenPurchases[tokenAddress].totalSpent += trade.amountIn;
         tokenPurchases[tokenAddress].totalBought += trade.amountOut;
       });
-      
+
       // Calculate average price for each token
       const calculatedPrices: Record<string, TokenAveragePrice> = {};
-      
+
       Object.entries(tokenPurchases).forEach(([tokenAddress, data]) => {
         if (data.totalBought > 0) {
           calculatedPrices[tokenAddress] = {
@@ -51,11 +54,11 @@ export function useTokenAveragePrices(fundAddress: `0x${string}`) {
             symbol: data.symbol,
             avgPurchasePrice: data.totalSpent / data.totalBought,
             totalBought: data.totalBought,
-            totalSpent: data.totalSpent
+            totalSpent: data.totalSpent,
           };
         }
       });
-      
+
       setAveragePrices(calculatedPrices);
     } catch (err) {
       console.error('Error calculating average prices:', err);

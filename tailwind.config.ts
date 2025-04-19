@@ -1,6 +1,6 @@
-import type { Config } from 'tailwindcss'
-import typography from '@tailwindcss/typography'
-import forms from '@tailwindcss/forms'
+import type { Config } from 'tailwindcss';
+import typography from '@tailwindcss/typography';
+import forms from '@tailwindcss/forms';
 
 const config: Config = {
   content: [
@@ -28,13 +28,13 @@ const config: Config = {
       },
       keyframes: {
         fadeUp: {
-          '0%': { 
+          '0%': {
             opacity: '0',
-            transform: 'translateY(20px)'
+            transform: 'translateY(20px)',
           },
           '100%': {
             opacity: '1',
-            transform: 'translateY(0)'
+            transform: 'translateY(0)',
           },
         },
         fadeIn: {
@@ -46,23 +46,26 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
       fontSize: {
-        'hero-title': ['80px', {
-          lineHeight: '1',
-          letterSpacing: '-0.02em',
-          fontWeight: '500'
-        }],
-        'hero-text': ['22px', {
-          lineHeight: '1.4',
-          letterSpacing: '-0.01em',
-          fontWeight: '400'
-        }],
+        'hero-title': [
+          '80px',
+          {
+            lineHeight: '1',
+            letterSpacing: '-0.02em',
+            fontWeight: '500',
+          },
+        ],
+        'hero-text': [
+          '22px',
+          {
+            lineHeight: '1.4',
+            letterSpacing: '-0.01em',
+            fontWeight: '400',
+          },
+        ],
       },
     },
   },
-  plugins: [
-    typography,
-    forms,
-  ],
-}
+  plugins: [typography, forms],
+};
 
-export default config
+export default config;
