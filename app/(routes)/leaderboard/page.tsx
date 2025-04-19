@@ -9,7 +9,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import { cn } from '@/app/utils/styles';
 import { fetchWalletDataForProfile, WalletData } from '@/app/utils/getWalletData';
-import { useRouter } from 'next/navigation';
 
 // Helper function to format a bigint balance (e.g. to 4 decimal places)
 const formatBalance = (balance: bigint): string => {
