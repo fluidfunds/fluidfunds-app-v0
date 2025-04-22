@@ -274,10 +274,9 @@ export default function LeaderboardPage() {
 
         <div className="mt-12">
           <div className="overflow-hidden rounded-xl bg-fluid-white/5">
-            <div className="grid grid-cols-6 gap-4 border-b border-fluid-white/10 p-4 text-sm text-fluid-white-70">
+            <div className="grid grid-cols-5 gap-4 border-b border-fluid-white/10 p-4 text-sm text-fluid-white-70">
               <div className="col-span-2">Fund Name</div>
               <div className="text-right">Total Investment</div>
-              <div className="text-right">Investors</div>
               <div className="text-right">Performance</div>
               <div className="text-right">Rank</div>
             </div>
@@ -313,16 +312,30 @@ const WalletRow = ({ wallet, rank }: WalletRowProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: rank * 0.1 }}
-        className="group grid cursor-pointer grid-cols-6 gap-4 p-4 text-fluid-white transition-colors hover:bg-fluid-white/[0.08]"
+        className="group grid cursor-pointer grid-cols-5 gap-4 p-4 text-fluid-white transition-colors hover:bg-fluid-white/[0.08]"
       >
         <div className="col-span-2 flex items-center gap-2 font-medium">
           {wallet.socialName}
           <span className="opacity-0 transition-opacity group-hover:opacity-100">→</span>
         </div>
-        <div className="text-right">${displayBalance}</div>
-        <div className="text-right">{wallet.performance}</div>
-        <div className="text-right text-green-400">+{wallet.performance}%</div>
-        <div className="text-right font-medium">#{rank}</div>
+        <div className="flex items-center justify-end text-right">${displayBalance}</div>
+        <div className="flex items-center justify-end text-right text-green-400">
+          +{wallet.performance}%
+        </div>
+        <div className="flex items-center justify-end font-medium">
+          <span
+            className={cn(
+              'flex aspect-square size-8 shrink-0 items-center justify-center rounded-full p-1',
+              {
+                'bg-amber-500/20 text-amber-400': rank === 1,
+                'bg-gray-400/20 text-gray-400': rank === 2,
+                'bg-amber-700/20 text-amber-700': rank === 3,
+              }
+            )}
+          >
+            #{rank}
+          </span>
+        </div>
       </motion.div>
     </Link>
   );
@@ -385,16 +398,23 @@ const FundRow = ({ fund, rank }: FundRowProps) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: rank * 0.1 }}
-        className="group grid cursor-pointer grid-cols-6 gap-4 p-4 text-fluid-white transition-colors hover:bg-fluid-white/[0.08]"
+        className="group grid cursor-pointer grid-cols-5 gap-4 p-4 text-fluid-white transition-colors hover:bg-fluid-white/[0.08]"
       >
         <div className="col-span-2 flex items-center gap-2 font-medium">
           {name}
           <span className="opacity-0 transition-opacity group-hover:opacity-100">→</span>
         </div>
         <div className="text-right">${displayBalance}</div>
-        <div className="text-right">{investorsCount}</div>
         <div className="text-right text-green-400">+{performanceMetric}%</div>
-        <div className="text-right font-medium">#{rank}</div>
+        <div
+          className={cn('rounded-full text-right font-medium', {
+            'bg-amber-500/20 text-amber-400': rank === 1,
+            'bg-gray-400/20 text-gray-400': rank === 2,
+            'bg-amber-700/20 text-amber-700': rank === 3,
+          })}
+        >
+          #{rank}
+        </div>
       </motion.div>
     </Link>
   );
