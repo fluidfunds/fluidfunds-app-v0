@@ -231,10 +231,14 @@ export default function WalletDetailPage() {
 
                 {/* Wallet address and chain */}
                 <div className="max-w-l flex w-full flex-col gap-2">
-                  <div className="flex w-full items-center gap-2 rounded-lg bg-white/5 px-3 py-2 backdrop-blur-sm">
-                    <Hash className="h-4 w-4 text-white/50" />
-                    <span className="text-sm text-white/70">Wallet:</span>
-                    <code className="break-all font-mono text-sm text-white">
+                  <div className="flex w-fit items-center gap-2 rounded-lg bg-white/5 p-2 px-3 py-2 transition-colors hover:bg-white/10">
+                    <span className="text-sm text-white/70">Chain:</span>
+                    <span className="text-sm text-white">{walletData?.chain}</span>
+                  </div>
+
+                  <div className="flex w-full items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+                    <span className="text-sm text-white/70"># Wallet:</span>
+                    <code className="truncate break-all font-mono text-sm text-white">
                       {walletData?.address}
                     </code>
                     <button
@@ -245,51 +249,14 @@ export default function WalletDetailPage() {
                       <Copy className="h-3 w-3 text-white" />
                     </button>
                   </div>
-
-                  <div className="flex w-full items-center gap-2 rounded-lg bg-white/5 px-3 py-2 backdrop-blur-sm">
-                    <span className="text-sm text-white/70">Chain:</span>
-                    <span className="text-sm text-white">{walletData?.chain}</span>
-                  </div>
-
-                  {/* Social links */}
-                  <div className="flex items-center gap-3">
-                    <a
-                      href={walletData?.socialLinks.twitter}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                      title="Twitter/X"
-                    >
-                      <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                      </svg>
-                    </a>
-                    <a
-                      href={walletData?.socialLinks.youtube}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                      title="YouTube"
-                    >
-                      <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
-                      </svg>
-                    </a>
-                    <div className="flex items-center gap-2 rounded-full bg-white/5 px-3 py-1">
-                      <Users className="h-3 w-3 text-white/70" />
-                      <span className="text-xs text-white">
-                        {walletData?.followers.toLocaleString()} followers
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* Right side: Individual Metric Cards */}
+              {/* Right side: Individual Metric Cards and Social Links */}
               <div className="flex h-full flex-col justify-between gap-4">
                 <div className="grid h-full grid-cols-4 gap-4">
                   {/* Rank Card */}
-                  <div className="flex h-full flex-col justify-center rounded-xl bg-white/5 px-5 py-6 text-center">
+                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
                     <p className="text-sm text-white/70">Rank</p>
                     <div className="mt-2 flex items-center justify-center">
                       <span className="text-2xl font-bold text-white">#{walletData?.rank}</span>
@@ -297,7 +264,7 @@ export default function WalletDetailPage() {
                     </div>
                   </div>
                   {/* 24h Performance Card */}
-                  <div className="flex h-full flex-col justify-center rounded-xl bg-white/5 px-5 py-6 text-center">
+                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
                     <p className="text-sm text-white/70">Performance (24h)</p>
                     <div className="mt-2 flex items-center justify-center">
                       <TrendingUp className="mr-2 h-5 w-5 text-fluid-primary" />
@@ -307,7 +274,7 @@ export default function WalletDetailPage() {
                     </div>
                   </div>
                   {/* Last 30d Performance Card */}
-                  <div className="flex h-full flex-col justify-center rounded-xl bg-white/5 px-5 py-6 text-center">
+                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
                     <p className="text-sm text-white/70">Performance (30d)</p>
                     <div className="mt-2 flex items-center justify-center">
                       {walletData?.performanceMetrics?.monthlyROI ? (
@@ -321,13 +288,45 @@ export default function WalletDetailPage() {
                     </div>
                   </div>
                   {/* Total Value Card */}
-                  <div className="flex h-full flex-col justify-center rounded-xl bg-white/5 px-5 py-6 text-center">
+                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
                     <p className="text-sm text-white/70">Total Value</p>
                     <div className="mt-2">
                       <span className="text-2xl font-bold text-white">
                         {formatCurrency(walletData?.totalValue ?? 0)}
                       </span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Social links */}
+                <div className="flex w-full items-center justify-end gap-3">
+                  <a
+                    href={walletData?.socialLinks.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+                    title="Twitter/X"
+                  >
+                    <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                  </a>
+                  <a
+                    href={walletData?.socialLinks.youtube}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+                    title="YouTube"
+                  >
+                    <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                    </svg>
+                  </a>
+                  <div className="flex h-8 items-center gap-2 rounded-full bg-white/5 px-3 py-1">
+                    <Users className="h-3 w-3 text-white/70" />
+                    <span className="text-xs text-white">
+                      {walletData?.followers.toLocaleString()} followers
+                    </span>
                   </div>
                 </div>
               </div>
