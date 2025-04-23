@@ -705,7 +705,7 @@ export const PerformanceHistory = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="flex flex-col gap-6">
               {/* Pie Chart */}
               <motion.div
                 variants={chartVariants}
@@ -716,7 +716,7 @@ export const PerformanceHistory = ({
               >
                 <h4 className="mb-4 font-medium text-white">Asset Distribution</h4>
                 <div className="flex h-[250px] items-center justify-center">
-                  <ResponsiveContainer>
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={portfolioData}
@@ -838,7 +838,7 @@ export const PerformanceHistory = ({
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className="flex h-8 w-8 items-center justify-center rounded-full"
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                                   style={{ backgroundColor: asset.color }}
                                 >
                                   {asset.symbol.charAt(0)}
@@ -889,11 +889,11 @@ export const PerformanceHistory = ({
                                   }`}
                                 >
                                   {asset.price > asset.avgPurchasePrice ? '+' : ''}
-                                  {(
+                                  {/* {(
                                     ((asset.price - asset.avgPurchasePrice) /
                                       asset.avgPurchasePrice) *
                                     100
-                                  ).toFixed(2)}
+                                  ).toFixed(2)} */}
                                   % from avg
                                 </div>
                               )}

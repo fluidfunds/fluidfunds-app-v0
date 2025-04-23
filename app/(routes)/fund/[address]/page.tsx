@@ -109,7 +109,7 @@ export default function FundDetailPage() {
     () => (
       <div className="bg-gradient-to-r from-gray-900 to-gray-800/50 px-4 pb-14 pt-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-6 px-4 sm:px-6 md:flex-row md:items-start md:justify-between lg:px-8">
             <div>
               <div className="mb-2 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-fluid-primary/20">
@@ -142,7 +142,7 @@ export default function FundDetailPage() {
                 {/* Display user role */}
                 {isConnected && !roleLoading && (
                   <div
-                    className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${
                       isManager
                         ? 'bg-purple-500/10 text-purple-400'
                         : 'bg-blue-500/10 text-blue-400'
@@ -367,95 +367,101 @@ const MainDashboardContent = ({
   trades: any[];
   tradesLoading: boolean;
   streamsLoading: boolean;
-}) => (
-  <div className="space-y-6 lg:col-span-9">
-    {/* InvestorDashboard for connected non-manager users */}
-    {isConnected && !isManager && (
-      <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20">
-            <Zap className="h-4 w-4 text-blue-400" />
+}) => {
+  const [showAllTrades, setShowAllTrades] = useState(false);
+  return (
+    <div className="space-y-6 lg:col-span-9">
+      {/* InvestorDashboard for connected non-manager users */}
+      {isConnected && !isManager && (
+        <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20">
+              <Zap className="h-4 w-4 text-blue-400" />
+            </div>
+            <h2 className="text-lg font-bold text-white">Your Investment</h2>
           </div>
-          <h2 className="text-lg font-bold text-white">Your Investment</h2>
+          <InvestorDashboard fundAddress={fundAddress} />
         </div>
-        <InvestorDashboard fundAddress={fundAddress} />
-      </div>
-    )}
+      )}
 
-    {/* Trading panel - manager only */}
-    {isManager && (
-      <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
-            <LineChart className="h-4 w-4 text-amber-400" />
-          </div>
-          <h2 className="text-lg font-bold text-white">Trading Panel</h2>
-        </div>
-        <TradingPanel fundAddress={fundAddress} />
-      </div>
-    )}
-
-    {/* Performance section with 100% width */}
-    <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
-            <TrendingUp className="h-4 w-4 text-green-400" />
-          </div>
-          <h2 className="text-lg font-bold text-white">Performance History</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
-            Last 7 Days
-          </button>
-          <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
-            Last 30 Days
-          </button>
-        </div>
-      </div>
-      <PerformanceHistory
-        fundAddress={fundAddress}
-        tvl={tvlMetrics.tvl}
-        percentageChange={tvlMetrics.percentageChange}
-      />
-    </div>
-
-    {/* Split layout for trading and investors */}
-    <div className="grid gap-6 md:grid-cols-2">
-      {/* Trading activity section */}
-      <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      {/* Trading panel - manager only */}
+      {isManager && (
+        <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
+          <div className="mb-4 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
               <LineChart className="h-4 w-4 text-amber-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">Recent Trading</h2>
+            <h2 className="text-lg font-bold text-white">Trading Panel</h2>
           </div>
-          <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
-            View All
-          </button>
+          <TradingPanel fundAddress={fundAddress} />
         </div>
-        <RecentTradingActivity trades={trades} loading={tradesLoading} />
-      </div>
+      )}
 
-      {/* Investors section */}
+      {/* Performance section with 100% width */}
       <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20">
-              <Users className="h-4 w-4 text-purple-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
+              <TrendingUp className="h-4 w-4 text-green-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">Active Investors</h2>
+            <h2 className="text-lg font-bold text-white">Performance History</h2>
           </div>
-          <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
-            View All
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+              Last 7 Days
+            </button>
+            <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+              Last 30 Days
+            </button>
+          </div>
         </div>
-        <ActiveInvestors streams={cachedStreams} loading={streamsLoading} />
+        <PerformanceHistory
+          fundAddress={fundAddress}
+          tvl={tvlMetrics.tvl}
+          percentageChange={tvlMetrics.percentageChange}
+        />
+      </div>
+
+      {/* Split layout for trading and investors */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Trading activity section */}
+        <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
+                <LineChart className="h-4 w-4 text-amber-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white">Recent Trading</h2>
+            </div>
+            <button
+              onClick={() => setShowAllTrades(!showAllTrades)}
+              className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {showAllTrades ? 'View Less' : 'View All'}
+            </button>
+          </div>
+          <RecentTradingActivity trades={trades} loading={tradesLoading} showAll={showAllTrades} />
+        </div>
+
+        {/* Investors section */}
+        <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20">
+                <Users className="h-4 w-4 text-purple-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white">Active Investors</h2>
+            </div>
+            <button className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white">
+              View All
+            </button>
+          </div>
+          <ActiveInvestors streams={cachedStreams} loading={streamsLoading} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Tab Button Component
 const TabButton = ({ active, label }: { active: boolean; label: string }) => (

@@ -64,7 +64,7 @@ export function InvestmentDetails({
   const AddressRow = ({ label, address, showFull = false }: AddressRowProps) => (
     <div className="flex flex-col space-y-1 border-b border-white/[0.05] py-3">
       <span className="text-sm text-white/60">{label}</span>
-      <div className="group flex items-center gap-2 rounded-lg bg-black/20 p-2">
+      <div className="group flex items-center justify-between gap-2 rounded-lg bg-black/20 p-2">
         <code className="break-all font-mono text-xs text-white/90 sm:text-sm">
           {showFull ? address : formatAddress(address)}
         </code>
@@ -82,7 +82,7 @@ export function InvestmentDetails({
   const AddressDisplay = useMemo(
     () => (
       <div className="space-y-2 rounded-lg bg-black/20 p-4">
-        <AddressRow label="Fund Address" address={fundAddress} showFull={true} />
+        <AddressRow label="Fund Address" address={fundAddress} />
         {fundDetails?.manager && <AddressRow label="Fund Manager" address={fundDetails.manager} />}
         <div className="flex items-center justify-between pt-3">
           <span className="text-white/60">Fund Fee</span>
@@ -102,15 +102,15 @@ export function InvestmentDetails({
       animate={{ opacity: 1, y: 0 }}
       className="sticky top-24 rounded-xl border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-sm"
     >
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold text-white">Investment Details</h3>
-        <div className="flex items-center gap-2 text-sm text-green-400">
+        <div className="flex w-fit items-center gap-2 rounded-full bg-green-400/10 px-2 py-1 text-sm text-green-400">
           <div className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-          <span>Open for Investment</span>
+          <span>Open</span>
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-2">
         {AddressDisplay}
 
         {!isConnected ? (
@@ -130,14 +130,14 @@ export function InvestmentDetails({
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm text-white/60">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-1 text-sm text-white/60">
               <span>Available Balance:</span>
               <span>{parseFloat(usdcxBalance).toFixed(2)} USDCx</span>
             </div>
 
             <div>
-              <label htmlFor="streamAmount" className="mb-2 block text-sm text-white/60">
+              <label htmlFor="streamAmount" className="mb-2 block px-1 text-sm text-white/60">
                 Monthly Investment Amount
               </label>
               <div className="relative">

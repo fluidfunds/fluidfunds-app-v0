@@ -15,6 +15,7 @@ interface Trade {
 interface RecentTradingActivityProps {
   trades: Trade[];
   loading: boolean;
+  showAll?: boolean;
 }
 
 const getTokenSymbol = (address: string): string => {
@@ -44,14 +45,18 @@ const formatAmount = (amount: number) => {
   });
 };
 
-export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivityProps) => {
+export const RecentTradingActivity = ({
+  trades,
+  loading,
+  showAll = false,
+}: RecentTradingActivityProps) => {
   // Sort trades by timestamp in descending order (newest first)
   const sortedTrades = [...trades].sort((a, b) => {
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
   // Get only the first 5 trades (most recent)
-  const recentTrades = sortedTrades;
+  const recentTrades = showAll ? sortedTrades : sortedTrades.slice(0, 5);
 
   console.log('All trades:', trades);
   console.log('Sorted and filtered trades:', recentTrades);
@@ -85,11 +90,11 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
   return (
     <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-6 backdrop-blur-sm">
       <div className="mb-6 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">Recent Trading Activity</h3>
+        <h3 className="text-lg font-semibold text-white">Recent Trades</h3>
         <div className="flex items-center gap-2 text-sm text-white/60">
           <LineChart className="h-4 w-4" />
           <span>
-            Last {Math.min(trades.length, 5)} of {trades.length} trades
+            Last {recentTrades.length} of {trades.length} trades
           </span>
         </div>
       </div>
@@ -114,25 +119,27 @@ export const RecentTradingActivity = ({ trades, loading }: RecentTradingActivity
                         {formatAmount(trade.amountOut)} {getTokenSymbol(trade.tokenOut)}
                       </span>
                     </div>
-                    <div className="rounded-full bg-white/[0.05] px-2 py-1 text-xs text-white/60">
-                      {formatTime(trade.timestamp)}
-                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <span className="text-xs text-white/40">
-                      {trade.transactionHash.slice(0, 6)}...{trade.transactionHash.slice(-4)}
+                    {trade.transactionHash.slice(0, 6)}...{trade.transactionHash.slice(-4)}
                     </span>
-                  </div>
+                    </div> */}
                 </div>
-                <a
-                  href={`https://sepolia.etherscan.io/tx/${trade.transactionHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg p-2 opacity-60 transition-colors hover:bg-white/10 hover:opacity-100"
-                  title="View on Etherscan"
-                >
-                  <ExternalLink className="h-4 w-4 text-white" />
-                </a>
+                <div className="flex items-center gap-1">
+                  <div className="text-nowrap rounded-full bg-white/[0.05] px-2 py-1 text-xs text-white/60">
+                    {formatTime(trade.timestamp)}
+                  </div>
+                  <a
+                    href={`https://sepolia.etherscan.io/tx/${trade.transactionHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg p-2 opacity-60 transition-colors hover:bg-white/10 hover:opacity-100"
+                    title="View on Etherscan"
+                  >
+                    <ExternalLink className="h-4 w-4 text-white" />
+                  </a>
+                </div>
               </div>
             </div>
           ))}
