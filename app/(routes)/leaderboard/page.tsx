@@ -391,6 +391,7 @@ const FundRow = ({ fund, rank }: FundRowProps) => {
 
   // Instead of metadata investors, show the number of active streams
   const investorsCount = activeStreams.length;
+  console.log('activeStreams: ', investorsCount);
 
   return (
     <Link href={`/fund/${fund.address}`}>

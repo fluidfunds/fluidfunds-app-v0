@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Copy,
   Share2,
-  Hash,
   BarChart2,
   Zap,
   Percent,
