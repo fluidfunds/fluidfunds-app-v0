@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ArrowLeft, Wallet, LineChart, Copy } from 'lucide-react';
+import { Wallet, LineChart, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAccount } from 'wagmi';
@@ -20,8 +20,8 @@ import { useUserRole } from '@/app/hooks/useUserRole'; // Import the useUserRole
 import InvestorDashboard from '@/app/components/InvestorDashboard'; // Add this import at the top with the other imports
 import { BarChart2, TrendingUp, Users, Zap } from 'lucide-react';
 import { useGetPnL } from '@/app/hooks/useGetPnL';
-import { motion } from 'framer-motion';
 import BackNavigation from '@/app/components/BackNavigation';
+import UserRoleBadge from '@/app/components/UserRoleBadge';
 // Type Definitions
 interface StreamInfo {
   id: string;
@@ -141,18 +141,7 @@ export default function FundDetailPage() {
                 </div>
 
                 {/* Display user role */}
-                {isConnected && !roleLoading && (
-                  <div
-                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${
-                      isManager
-                        ? 'bg-purple-500/10 text-purple-400'
-                        : 'bg-blue-500/10 text-blue-400'
-                    }`}
-                  >
-                    <Zap className="h-4 w-4" />
-                    <span>{isManager ? 'Fund Manager' : 'Investor'}</span>
-                  </div>
-                )}
+                {isConnected && !roleLoading && <UserRoleBadge role={role} />}
               </div>
               <div className="flex w-full items-center justify-start gap-3 pt-4">
                 <a
