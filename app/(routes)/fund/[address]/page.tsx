@@ -20,7 +20,8 @@ import { useUserRole } from '@/app/hooks/useUserRole'; // Import the useUserRole
 import InvestorDashboard from '@/app/components/InvestorDashboard'; // Add this import at the top with the other imports
 import { BarChart2, TrendingUp, Users, Zap } from 'lucide-react';
 import { useGetPnL } from '@/app/hooks/useGetPnL';
-
+import { motion } from 'framer-motion';
+import BackNavigation from '@/app/components/BackNavigation';
 // Type Definitions
 interface StreamInfo {
   id: string;
@@ -287,9 +288,9 @@ export default function FundDetailPage() {
       ) : fundError ? (
         <ErrorState error={fundError} />
       ) : (
-        <div className="relative z-10">
+        <div className="relative z-10 pt-20">
           {/* Top navigation */}
-          <NavigationBar isConnected={isConnected} />
+          <BackNavigation href="/funds" label="Funds" />
 
           {/* Hero section */}
           {FundHeroSection}
@@ -353,27 +354,6 @@ const ErrorState = ({ error }: { error: string }) => (
       </Link>
     </div>
   </div>
-);
-
-// Navigation bar component
-const NavigationBar = ({ isConnected }: { isConnected: boolean }) => (
-  <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur-lg">
-    <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-      <Link
-        href="/"
-        className="group inline-flex items-center gap-2 text-white/60 transition-colors hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-        <span>Back to Funds</span>
-      </Link>
-      {isConnected && (
-        <div className="flex items-center gap-4">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-          <span className="text-sm text-green-400">Connected</span>
-        </div>
-      )}
-    </div>
-  </nav>
 );
 
 // Dashboard tabs component

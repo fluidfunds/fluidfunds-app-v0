@@ -1,6 +1,5 @@
 'use client';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
@@ -9,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import { cn } from '@/app/utils/styles';
 import { fetchWalletDataForProfile, WalletData } from '@/app/utils/getWalletData';
+import BackNavigation from '@/app/components/BackNavigation';
 
 // Helper function to format a bigint balance (e.g. to 4 decimal places)
 const formatBalance = (balance: bigint): string => {
@@ -173,22 +173,9 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-fluid-bg pb-12 pt-24">
+    <div className="min-h-screen bg-fluid-bg pb-12 pt-20">
+      <BackNavigation href="/" label="Home" />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="mb-8"
-        >
-          <Link
-            href="/"
-            className="group inline-flex items-center gap-2 text-fluid-white-70 transition-colors hover:text-fluid-white"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            <span>Back to Home</span>
-          </Link>
-        </motion.div>
-
         <div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}

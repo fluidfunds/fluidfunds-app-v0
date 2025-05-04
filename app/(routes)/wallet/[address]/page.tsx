@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Trophy,
   TrendingUp,
   Copy,
@@ -19,7 +18,7 @@ import ParticleBackground from '@/app/components/ParticleBackground';
 import { toast } from 'sonner';
 // Import the Covalent API helper
 import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
-import { motion } from 'framer-motion';
+import BackNavigation from '@/app/components/BackNavigation';
 
 // Define types for walletData and holdings
 interface WalletData {
@@ -167,23 +166,9 @@ export default function WalletDetailPage() {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 pt-24">
+      <div className="relative z-10 pt-20">
         {/* Top navigation */}
-        <div className="mx-auto flex max-w-7xl justify-between px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="mb-8"
-          >
-            <Link
-              href="/leaderboard"
-              className="group inline-flex items-center gap-2 text-fluid-white-70 transition-colors hover:text-fluid-white"
-            >
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              <span>Back to Leaderboard</span>
-            </Link>
-          </motion.div>
-        </div>
+        <BackNavigation href="/leaderboard" label="Leaderboard" />
 
         {/* Profile header */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
