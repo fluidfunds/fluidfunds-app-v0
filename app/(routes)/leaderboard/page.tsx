@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'framer-motion';
-import { Trophy, ArrowLeft, BarChart2, Activity } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useFluidFundsSubgraphManager } from '@/app/hooks/useFluidFundsSubgraphManager';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
@@ -19,76 +19,11 @@ const formatBalance = (balance: bigint): string => {
   });
 };
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-const LeaderBoardStats = () => {
-  const stats = [
-    {
-      name: 'Top Performers',
-      value: 100,
-      icon: <Trophy className="h-4 w-4 text-amber-400" />,
-      iconBackground: 'bg-amber-500/20',
-      description: 'Discover the highest performing wallets based on historical returns',
-      subDescription: 'and tracked wallet numbers',
-    },
-    {
-      name: 'Active Predictions',
-      value: 4,
-      icon: <Activity className="h-4 w-4 text-blue-400" />,
-      iconBackground: 'bg-blue-500/20',
-      description: 'Currently running wallet performance predictions',
-      subDescription: 'LIVE predictions status',
-    },
-    {
-      name: 'Total Bets',
-      value: 1000000,
-      icon: <BarChart2 className="h-4 w-4 text-green-400" />,
-      iconBackground: 'bg-green-500/20',
-      description: 'Total value locked in prediction markets',
-      subDescription: 'value across all predictions',
-    },
-  ];
-  return (
-    <div className="mb-8 mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
-      {stats.map((stat, index) => (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-          key={stat.name}
-          className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10"
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <div
-              className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-full',
-                stat.iconBackground
-              )}
-            >
-              {stat.icon}
-            </div>
-            <h3 className="font-medium text-white">{stat.name}</h3>
-          </div>
-          <p className="mb-2 text-2xl font-bold text-white">{formatCurrency(stat.value)}</p>
-          <p className="text-sm text-white/70">{stat.description}</p>
-          <p className="mt-1 text-xs text-white/50">{stat.subDescription}</p>
-        </motion.div>
-      ))}
-    </div>
-  );
-};
-
 enum EntityType {
   Fund = 'fund',
   Wallet = 'wallet',
 }
+
 // Adjusted interface so that metadata and its performanceMetrics are optional.
 interface FundWithMetadata {
   address: `0x${string}`;
@@ -122,7 +57,6 @@ export default function LeaderboardPage() {
   const { funds, loading, error } = useFluidFundsSubgraphManager();
   const [trackedWallets, setTrackedWallets] = useState<WalletLeaderboardData[]>([]);
 
-  // Move trackedWalletsData into useMemo
   const trackedWalletsData = useMemo(
     () => [
       { socialName: 'basefreakz', addresses: ['0xcde9f00116bffe9852b2cd4295446ae5fc51ad0a'] },
@@ -176,29 +110,33 @@ export default function LeaderboardPage() {
     []
   );
 
-  // Update useEffect to include trackedWalletsData in dependencies
-  useEffect(() => {
-    async function fetchTrackedWallets() {
-      const results = await Promise.all(
-        trackedWalletsData.map(async profile => {
-          return await fetchWalletDataForProfile(profile);
-        })
-      );
-      results.sort((a, b) => b.totalValue - a.totalValue);
-      results.forEach((wallet, index) => (wallet.rank = index + 1));
-      // make the shape of the data the same as the funds
-      const formattedWallets = results.map(wallet => ({
-        ...wallet,
-        metadata: {
-          performanceMetrics: {
-            tvl: wallet.totalValue.toString(),
-          },
+  async function fetchTrackedWallets(wallets: { socialName: string; addresses: string[] }[]) {
+    const results = await Promise.all(
+      wallets.map(async profile => {
+        return await fetchWalletDataForProfile(profile);
+      })
+    );
+    results.sort((a, b) => b.totalValue - a.totalValue);
+    results.forEach((wallet, index) => (wallet.rank = index + 1));
+    // make the shape of the data the same as the funds
+    const formattedWallets = results.map(wallet => ({
+      ...wallet,
+      metadata: {
+        performanceMetrics: {
+          tvl: wallet.totalValue.toString(),
         },
-        type: EntityType.Wallet,
-      }));
-      setTrackedWallets(formattedWallets as WalletLeaderboardData[]);
-    }
-    fetchTrackedWallets();
+      },
+      type: EntityType.Wallet,
+    }));
+    return formattedWallets as WalletLeaderboardData[];
+  }
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const results = await fetchTrackedWallets(trackedWalletsData);
+      setTrackedWallets(results);
+    };
+    fetchData();
   }, [trackedWalletsData]);
 
   const fundsWithType: FundWithMetadata[] = useMemo(() => {
@@ -255,9 +193,9 @@ export default function LeaderboardPage() {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 text-4xl font-bold text-fluid-white"
+            className="mb-2 text-4xl font-bold text-fluid-white"
           >
-            Fund Rankings
+            Leaderboard
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -265,14 +203,12 @@ export default function LeaderboardPage() {
             transition={{ delay: 0.1 }}
             className="text-fluid-white-70"
           >
-            Track the performance of all FluidFunds and discover the top performing investment
-            opportunities
+            Track the performance of all wallets and funds on FluidFunds and discover the top
+            performing investment opportunities
           </motion.p>
         </div>
 
-        <LeaderBoardStats />
-
-        <div className="mt-12">
+        <div className="mt-10">
           <div className="overflow-hidden rounded-xl bg-fluid-white/5">
             <div className="grid grid-cols-5 gap-4 border-b border-fluid-white/10 p-4 text-sm text-fluid-white-70">
               <div className="col-span-2">Fund Name</div>
@@ -300,6 +236,7 @@ interface WalletRowProps {
   wallet: WalletLeaderboardData;
   rank: number;
 }
+
 const WalletRow = ({ wallet, rank }: WalletRowProps) => {
   const displayBalance = wallet.totalValue.toLocaleString('en-US', {
     minimumFractionDigits: 4,
