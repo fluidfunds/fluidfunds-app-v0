@@ -99,8 +99,6 @@ const formatAddress = (address?: string): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-// Helper function to create test portfolio when needed
-
 export const PerformanceHistory = ({
   tvl,
   percentageChange,
@@ -116,13 +114,6 @@ export const PerformanceHistory = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [dataSource, setDataSource] = useState<'api' | 'test'>('test');
-
-  // Track if component is mounted to prevent state updates after unmount
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isMounted = useRef(true);
-
   // Store the current fund address to prevent race conditions
   const currentFundAddress = useRef<string | undefined>(fundAddress);
 
