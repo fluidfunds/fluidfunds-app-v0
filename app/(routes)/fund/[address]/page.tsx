@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
-import { toast } from 'sonner';
 import ParticleBackground from '@/app/components/ParticleBackground';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
 import { useFluidFundDetails } from '@/app/hooks/useFluidFundDetails';
@@ -22,7 +21,9 @@ import { BarChart2, TrendingUp, Users, Zap } from 'lucide-react';
 import { useGetPnL } from '@/app/hooks/useGetPnL';
 import BackNavigation from '@/app/components/BackNavigation';
 import UserRoleBadge from '@/app/components/UserRoleBadge';
-// Type Definitions
+import { copyToClipboard } from '@/app/utils/common';
+import { formatAddress } from '@/app/utils/common';
+
 interface StreamInfo {
   id: string;
   sender: {
@@ -37,6 +38,7 @@ interface FundDetails {
   profitSharingPercentage: number;
   subscriptionEndTime: number;
 }
+
 export default function FundDetailPage() {
   const params = useParams();
   const fundAddress = params?.address as string as `0x${string}`;
@@ -85,25 +87,11 @@ export default function FundDetailPage() {
     }
   }, [activeStreams, lastUpdateTime]);
 
-  const formatAddress = useCallback(
-    (address: string): string => `${address.slice(0, 6)}...${address.slice(-4)}`,
-    []
-  );
-
   const totalFlowRate = useMemo(
     () => cachedStreams.reduce((acc, stream) => acc + stream.flowRatePerDay, 0),
     [cachedStreams]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const copyToClipboard = async (text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Address copied to clipboard');
-    } catch (err: unknown) {
-      toast.error('Failed to copy address');
-    }
-  };
   console.log(pnlData, 'pnlData');
   // Memoize the fund hero section using raw contract data
   const FundHeroSection = useMemo(
@@ -123,129 +111,20 @@ export default function FundDetailPage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white/70">Manager:</span>
-                    <code className="break-all font-mono text-sm text-white">
-                      {fundDetails?.manager ? formatAddress(fundDetails.manager) : 'Loading...'}
-                    </code>
-                    {fundDetails?.manager && (
-                      <button
-                        onClick={() => copyToClipboard(fundDetails.manager)}
-                        className="rounded-md p-1 opacity-50 transition-colors hover:bg-white/10 hover:opacity-100"
-                        title="Copy manager address"
-                      >
-                        <Copy className="h-3 w-3 text-white" />
-                      </button>
-                    )}
-                  </div>
+                  {fundDetails?.manager && (
+                    <FundManagerDetails managerAddress={fundDetails.manager} />
+                  )}
                 </div>
-
-                {/* Display user role */}
                 {isConnected && !roleLoading && <UserRoleBadge role={role} />}
               </div>
-              <div className="flex w-full items-center justify-start gap-3 pt-4">
-                <a
-                  href={'#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                  title="X/Twitter"
-                >
-                  <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                </a>
-                <a
-                  href={'#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                  title="Farcaster"
-                >
-                  <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3.22 15.89C4.07 18.76 6.76 21 10 21h4c3.24 0 5.93-2.24 6.78-5.11.31-1.05.42-2.12.39-3.19l-1.01.93a4.99 4.99 0 0 1-6.46.37l-2.37-1.81-2.38 1.81a4.99 4.99 0 0 1-6.46-.37l-1.01-.93c-.03 1.07.08 2.14.39 3.19zM21 11.63a8 8 0 0 0-16 0" />
-                  </svg>
-                </a>
-                <a
-                  href={'#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                  title="Alfafrens"
-                >
-                  <svg
-                    className="h-4 w-4 text-white"
-                    viewBox="0 0 290 269"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M0.52002 162.566L55.7419 268.32H225.961L289.48 146.309L238.305 136.897L270.811 60.9621L217.24 72.3417L225.054 26.0105L178.533 48.4133L157.175 0L116.813 48.4133L80.5738 27.6362L72.76 90.224L25.6823 70.7161L48.4095 155.25L0.52002 162.566Z"
-                      fill="#0400F5"
-                    />
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M118.361 179.47C121.971 176.302 125.34 171.058 127.164 164.378C128.988 157.699 128.753 151.47 127.253 146.907C125.734 142.282 123.283 140.188 121.125 139.599C118.967 139.009 115.792 139.567 112.132 142.778C108.522 145.945 105.153 151.19 103.329 157.869C101.505 164.549 101.74 170.777 103.239 175.34C104.759 179.966 107.21 182.06 109.368 182.649C111.526 183.238 114.701 182.681 118.361 179.47ZM107.508 189.46C117.851 192.285 129.701 181.888 133.975 166.238C138.249 150.589 133.328 135.612 122.985 132.787C112.641 129.963 100.792 140.359 96.5179 156.009C92.2441 171.659 97.1645 186.635 107.508 189.46Z"
-                      fill="#8CFB51"
-                    />
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M188.626 140.072C189.858 141.754 189.493 144.117 187.811 145.349L166.332 161.077L187.62 175.408C189.35 176.573 189.808 178.919 188.644 180.649C187.479 182.379 185.133 182.837 183.403 181.672L159.505 165.584C156.435 163.517 156.346 159.03 159.332 156.843L183.349 139.256C185.032 138.024 187.394 138.389 188.626 140.072Z"
-                      fill="#8CFB51"
-                    />
-                    <path
-                      d="M165.517 201.135C167.28 202.223 167.845 204.551 166.554 206.172C164.029 209.343 160.903 212.001 157.342 213.989C152.687 216.587 147.443 217.952 142.111 217.952C136.779 217.952 131.536 216.588 126.88 213.989C123.32 212.002 120.194 209.343 117.668 206.173C116.377 204.552 116.942 202.223 118.706 201.135C120.469 200.048 122.761 200.62 124.112 202.191C125.923 204.295 128.096 206.074 130.537 207.436C134.075 209.411 138.059 210.448 142.111 210.448C146.163 210.448 150.147 209.411 153.685 207.436C156.126 206.073 158.299 204.295 160.11 202.191C161.462 200.62 163.753 200.047 165.517 201.135Z"
-                      fill="#8CFB51"
-                    />
-                  </svg>
-                </a>
-                <div className="flex h-8 items-center gap-2 rounded-full bg-white/5 px-3 py-1">
-                  <Users className="h-3 w-3 text-white/70" />
-                  <span className="text-xs text-white">0 frens</span>
-                </div>
-              </div>
+              <FundSocials />
             </div>
-
-            {/* Metrics cards in hero */}
-            <div className="mt-4 grid grid-cols-2 gap-4 md:mt-0">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <BarChart2 className="h-4 w-4 text-fluid-primary" />
-                  <p className="text-sm text-white/70">Total Daily Investment</p>
-                </div>
-                <p className="text-xl font-bold text-white">
-                  {(totalFlowRate || 0).toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    minimumFractionDigits: 0,
-                  })}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-400" />
-                  <p className="text-sm text-white/70">Active Investors</p>
-                </div>
-                <p className="text-xl font-bold text-white">{cachedStreams.length}</p>
-              </div>
-            </div>
+            <FundMetrics totalFlowRate={totalFlowRate} cachedStreams={cachedStreams} />
           </div>
         </div>
       </div>
     ),
-    [
-      fundDetails,
-      formatAddress,
-      copyToClipboard,
-      totalFlowRate,
-      cachedStreams.length,
-      isConnected,
-      roleLoading,
-      isManager,
-    ]
+    [fundDetails, totalFlowRate, isConnected, roleLoading, cachedStreams, role]
   );
 
   // Calculate total value locked and percentage change
@@ -319,7 +198,128 @@ export default function FundDetailPage() {
   );
 }
 
-// Loading state component
+const FundManagerDetails = ({ managerAddress }: { managerAddress: string }) => {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-white/70">Manager:</span>
+      <code className="break-all font-mono text-sm text-white">
+        {managerAddress ? formatAddress(managerAddress) : 'Loading...'}
+      </code>
+      {managerAddress && (
+        <button
+          onClick={() => copyToClipboard(managerAddress, 'Manager address copied to clipboard')}
+          className="rounded-md p-1 opacity-50 transition-colors hover:bg-white/10 hover:opacity-100"
+          title="Copy manager address"
+        >
+          <Copy className="h-3 w-3 text-white" />
+        </button>
+      )}
+    </div>
+  );
+};
+
+const FundMetrics = ({
+  totalFlowRate,
+  cachedStreams,
+}: {
+  totalFlowRate: number;
+  cachedStreams: StreamInfo[];
+}) => {
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-4 md:mt-0">
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+        <div className="mb-2 flex items-center gap-2">
+          <BarChart2 className="h-4 w-4 text-fluid-primary" />
+          <p className="text-sm text-white/70">Total Daily Investment</p>
+        </div>
+        <p className="text-xl font-bold text-white">
+          {(totalFlowRate || 0).toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+          })}
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+        <div className="mb-2 flex items-center gap-2">
+          <Users className="h-4 w-4 text-blue-400" />
+          <p className="text-sm text-white/70">Active Investors</p>
+        </div>
+        <p className="text-xl font-bold text-white">{cachedStreams.length}</p>
+      </div>
+    </div>
+  );
+};
+
+const FundSocials = () => {
+  return (
+    <div className="flex w-full items-center justify-start gap-3 pt-4">
+      <a
+        href={'#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="X/Twitter"
+      >
+        <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+      </a>
+      <a
+        href={'#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="Farcaster"
+      >
+        <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3.22 15.89C4.07 18.76 6.76 21 10 21h4c3.24 0 5.93-2.24 6.78-5.11.31-1.05.42-2.12.39-3.19l-1.01.93a4.99 4.99 0 0 1-6.46.37l-2.37-1.81-2.38 1.81a4.99 4.99 0 0 1-6.46-.37l-1.01-.93c-.03 1.07.08 2.14.39 3.19zM21 11.63a8 8 0 0 0-16 0" />
+        </svg>
+      </a>
+      <a
+        href={'#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="Alfafrens"
+      >
+        <svg
+          className="h-4 w-4 text-white"
+          viewBox="0 0 290 269"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M0.52002 162.566L55.7419 268.32H225.961L289.48 146.309L238.305 136.897L270.811 60.9621L217.24 72.3417L225.054 26.0105L178.533 48.4133L157.175 0L116.813 48.4133L80.5738 27.6362L72.76 90.224L25.6823 70.7161L48.4095 155.25L0.52002 162.566Z"
+            fill="#0400F5"
+          />
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            d="M118.361 179.47C121.971 176.302 125.34 171.058 127.164 164.378C128.988 157.699 128.753 151.47 127.253 146.907C125.734 142.282 123.283 140.188 121.125 139.599C118.967 139.009 115.792 139.567 112.132 142.778C108.522 145.945 105.153 151.19 103.329 157.869C101.505 164.549 101.74 170.777 103.239 175.34C104.759 179.966 107.21 182.06 109.368 182.649C111.526 183.238 114.701 182.681 118.361 179.47ZM107.508 189.46C117.851 192.285 129.701 181.888 133.975 166.238C138.249 150.589 133.328 135.612 122.985 132.787C112.641 129.963 100.792 140.359 96.5179 156.009C92.2441 171.659 97.1645 186.635 107.508 189.46Z"
+            fill="#8CFB51"
+          />
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            d="M188.626 140.072C189.858 141.754 189.493 144.117 187.811 145.349L166.332 161.077L187.62 175.408C189.35 176.573 189.808 178.919 188.644 180.649C187.479 182.379 185.133 182.837 183.403 181.672L159.505 165.584C156.435 163.517 156.346 159.03 159.332 156.843L183.349 139.256C185.032 138.024 187.394 138.389 188.626 140.072Z"
+            fill="#8CFB51"
+          />
+          <path
+            d="M165.517 201.135C167.28 202.223 167.845 204.551 166.554 206.172C164.029 209.343 160.903 212.001 157.342 213.989C152.687 216.587 147.443 217.952 142.111 217.952C136.779 217.952 131.536 216.588 126.88 213.989C123.32 212.002 120.194 209.343 117.668 206.173C116.377 204.552 116.942 202.223 118.706 201.135C120.469 200.048 122.761 200.62 124.112 202.191C125.923 204.295 128.096 206.074 130.537 207.436C134.075 209.411 138.059 210.448 142.111 210.448C146.163 210.448 150.147 209.411 153.685 207.436C156.126 206.073 158.299 204.295 160.11 202.191C161.462 200.62 163.753 200.047 165.517 201.135Z"
+            fill="#8CFB51"
+          />
+        </svg>
+      </a>
+      <div className="flex h-8 items-center gap-2 rounded-full bg-white/5 px-3 py-1">
+        <Users className="h-3 w-3 text-white/70" />
+        <span className="text-xs text-white">0 frens</span>
+      </div>
+    </div>
+  );
+};
+
 const LoadingState = () => (
   <div className="flex min-h-screen items-center justify-center">
     <div className="flex flex-col items-center gap-3">
@@ -329,7 +329,6 @@ const LoadingState = () => (
   </div>
 );
 
-// Error state component
 const ErrorState = ({ error }: { error: string }) => (
   <div className="flex min-h-screen items-center justify-center">
     <div className="max-w-md rounded-lg bg-red-400/10 p-6 text-center text-red-400">
@@ -345,7 +344,6 @@ const ErrorState = ({ error }: { error: string }) => (
   </div>
 );
 
-// Dashboard tabs component
 const DashboardTabs = ({ isManager }: { isManager: boolean }) => (
   <div className="scrollbar-hide mb-8 overflow-x-auto border-b border-white/10">
     <div className="flex space-x-8">
@@ -355,7 +353,6 @@ const DashboardTabs = ({ isManager }: { isManager: boolean }) => (
   </div>
 );
 
-// Fund sidebar component
 const FundSidebar = ({
   fundAddress,
   fundDetails,
@@ -377,7 +374,6 @@ const FundSidebar = ({
   </div>
 );
 
-// Main dashboard content component
 const MainDashboardContent = ({
   tvlMetrics,
   totalFlowRate,
@@ -495,7 +491,6 @@ const MainDashboardContent = ({
   );
 };
 
-// Tab Button Component
 const TabButton = ({ active, label }: { active: boolean; label: string }) => (
   <button
     className={`relative whitespace-nowrap px-2 py-4 text-base font-medium transition-colors ${
@@ -508,7 +503,6 @@ const TabButton = ({ active, label }: { active: boolean; label: string }) => (
   </button>
 );
 
-// Metric Card Component
 const MetricCard = ({
   title,
   value,
@@ -539,13 +533,3 @@ const MetricCard = ({
     )}
   </div>
 );
-
-// Helper function for currency formatting
-const formatCurrency = (value: number): string => {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-};
