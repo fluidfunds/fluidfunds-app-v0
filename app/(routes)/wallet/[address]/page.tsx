@@ -1,13 +1,12 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
   Trophy,
   TrendingUp,
   Copy,
-  Share2,
   BarChart2,
   Zap,
   Percent,
@@ -20,6 +19,7 @@ import ParticleBackground from '@/app/components/ParticleBackground';
 import { toast } from 'sonner';
 // Import the Covalent API helper
 import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
+import { motion } from 'framer-motion';
 
 // Define types for walletData and holdings
 interface WalletData {
@@ -57,7 +57,6 @@ interface Holding {
 }
 
 export default function WalletDetailPage() {
-  const router = useRouter();
   const { address } = useParams() as { address: string };
   const [loading, setLoading] = useState(true);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
@@ -144,10 +143,6 @@ export default function WalletDetailPage() {
     }
   };
 
-  const shareProfile = () => {
-    toast.success('Share link copied to clipboard');
-  };
-
   if (loading) {
     return (
       <div className="relative min-h-screen overflow-x-hidden">
@@ -172,30 +167,26 @@ export default function WalletDetailPage() {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10">
+      <div className="relative z-10 pt-24">
         {/* Top navigation */}
-        <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur-lg">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <button
-              onClick={() => router.back()}
-              className="group inline-flex items-center gap-2 text-white/60 transition-colors hover:text-white"
+        <div className="mx-auto flex max-w-7xl justify-between px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mb-8"
+          >
+            <Link
+              href="/leaderboard"
+              className="group inline-flex items-center gap-2 text-fluid-white-70 transition-colors hover:text-fluid-white"
             >
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              <span>Back to Prediction Market</span>
-            </button>
-
-            <button
-              onClick={shareProfile}
-              className="flex items-center gap-2 rounded-full bg-fluid-primary px-4 py-2 font-medium text-black transition-colors hover:bg-fluid-primary/90"
-            >
-              <Share2 className="h-4 w-4" />
-              <span>Share Profile</span>
-            </button>
-          </div>
-        </nav>
+              <span>Back to Leaderboard</span>
+            </Link>
+          </motion.div>
+        </div>
 
         {/* Profile header */}
-        <div className="mx-auto mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
             <div className="flex flex-col gap-6 md:flex-row">
               {/* Left side: Main details */}
