@@ -4,12 +4,31 @@ import { Wallet, Copy } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { toast } from 'sonner';
 import { useSuperfluid } from '@/app/hooks/useSuperfluid';
+import { copyToClipboard, formatAddress } from '../utils/common';
 
 interface AddressRowProps {
   label: string;
   address: string;
   showFull?: boolean;
 }
+
+const AddressRow = ({ label, address, showFull = false }: AddressRowProps) => (
+  <div className="flex flex-col space-y-1 border-b border-white/[0.05] py-3">
+    <span className="text-sm text-white/60">{label}</span>
+    <div className="group flex items-center justify-between gap-2 rounded-lg bg-black/20 p-2">
+      <code className="break-all font-mono text-xs text-white/90 sm:text-sm">
+        {showFull ? address : formatAddress(address)}
+      </code>
+      <button
+        onClick={() => copyToClipboard(address, 'Address copied to clipboard')}
+        className="flex-shrink-0 rounded-md p-1.5 opacity-50 transition-colors hover:bg-white/10 group-hover:opacity-100"
+        title="Copy address"
+      >
+        <Copy className="h-3 w-3 text-white" />
+      </button>
+    </div>
+  </div>
+);
 
 interface InvestmentDetailsProps {
   fundAddress: `0x${string}`;
@@ -30,19 +49,6 @@ export function InvestmentDetails({
   const [streamAmount, setStreamAmount] = useState('');
   const { createStream, loading: isStreaming, usdcxBalance } = useSuperfluid(fundAddress);
 
-  const formatAddress = (address: string): string =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`;
-
-  const copyToClipboard = async (text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Address copied to clipboard');
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (err: unknown) {
-      toast.error('Failed to copy address');
-    }
-  };
-
   const handleCreateStream = async () => {
     if (!streamAmount || parseFloat(streamAmount) <= 0) {
       toast.error('Please enter a valid stream amount');
@@ -61,24 +67,6 @@ export function InvestmentDetails({
     }
   };
 
-  const AddressRow = ({ label, address, showFull = false }: AddressRowProps) => (
-    <div className="flex flex-col space-y-1 border-b border-white/[0.05] py-3">
-      <span className="text-sm text-white/60">{label}</span>
-      <div className="group flex items-center justify-between gap-2 rounded-lg bg-black/20 p-2">
-        <code className="break-all font-mono text-xs text-white/90 sm:text-sm">
-          {showFull ? address : formatAddress(address)}
-        </code>
-        <button
-          onClick={() => copyToClipboard(address)}
-          className="flex-shrink-0 rounded-md p-1.5 opacity-50 transition-colors hover:bg-white/10 group-hover:opacity-100"
-          title="Copy address"
-        >
-          <Copy className="h-3 w-3 text-white" />
-        </button>
-      </div>
-    </div>
-  );
-
   const AddressDisplay = useMemo(
     () => (
       <div className="space-y-2 rounded-lg bg-black/20 p-4">
@@ -91,9 +79,8 @@ export function InvestmentDetails({
           </span>
         </div>
       </div>
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     ),
-    [fundAddress, fundDetails, formatAddress, copyToClipboard]
+    [fundAddress, fundDetails]
   );
 
   return (
@@ -132,7 +119,7 @@ export function InvestmentDetails({
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between px-1 text-sm text-white/60">
-              <span>Available Balance:</span>
+              <span>Balance:</span>
               <span>{parseFloat(usdcxBalance).toFixed(2)} USDCx</span>
             </div>
 
