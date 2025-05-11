@@ -11,7 +11,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: 'FluidFunds-A Decentralized Investment Pool Platform with Real-Time Streaming',
+  title: 'FluidRush-A Decentralized Investment Pool Platform with Real-Time Streaming',
   description:
     "FluidFund enables investors to contribute continuously to a fund manager's pool via Superfluid streams. The fund manager invests the pooled USDC on behalf of the investors.",
   icons: {

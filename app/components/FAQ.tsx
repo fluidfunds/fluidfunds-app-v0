@@ -44,9 +44,9 @@ const FAQ = () => {
         'Fund managers create investment pools where users can stream USDC continuously using Superfluid protocol. Managers then invest these funds in whitelisted, high market cap tokens.',
     },
     {
-      question: 'Why FluidFunds?',
+      question: 'Why FluidRush?',
       answer:
-        'FluidFunds provides a secure, transparent platform with rug-proof contracts and whitelisted tokens, ensuring your investments are protected while enabling professional fund management.',
+        'FluidRush provides a secure, transparent platform with rug-proof contracts and whitelisted tokens, ensuring your investments are protected while enabling professional fund management.',
     },
     {
       question: 'What chains are available?',
