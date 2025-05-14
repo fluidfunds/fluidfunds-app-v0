@@ -158,7 +158,7 @@ export default function FundDetailPage() {
       ) : (
         <div className="relative z-10 pt-20">
           {/* Top navigation */}
-          <BackNavigation href="/funds" label="Funds" />
+          <BackNavigation href="/" label="Home" />
 
           {/* Hero section */}
           {FundHeroSection}

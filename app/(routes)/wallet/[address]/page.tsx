@@ -15,10 +15,11 @@ import {
   Activity,
 } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
-import { toast } from 'sonner';
 // Import the Covalent API helper
 import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
 import BackNavigation from '@/app/components/BackNavigation';
+import { copyToClipboard, formatAddress } from '@/app/utils/common';
+import UserRoleBadge from '@/app/components/UserRoleBadge';
 
 // Define types for walletData and holdings
 interface WalletData {
@@ -132,16 +133,6 @@ export default function WalletDetailPage() {
     fetchWalletData();
   }, [address, fetchWalletData]);
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Address copied to clipboard');
-    } catch (err) {
-      console.error(err);
-      toast.error('Failed to copy address');
-    }
-  };
-
   if (loading) {
     return (
       <div className="relative min-h-screen overflow-x-hidden">
@@ -171,143 +162,8 @@ export default function WalletDetailPage() {
         <BackNavigation href="/leaderboard" label="Leaderboard" />
 
         {/* Profile header */}
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
-            <div className="flex flex-col gap-6 md:flex-row">
-              {/* Left side: Main details */}
-              <div className="flex flex-1 flex-col gap-4">
-                {/* Name and social */}
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-fluid-primary/20">
-                    <Wallet className="h-6 w-6 text-fluid-primary" />
-                  </div>
-                  <div>
-                    <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
-                      {walletData?.name}
-                      {walletData && walletData.rank <= 3 && (
-                        <Trophy className="h-5 w-5 text-amber-400" />
-                      )}
-                    </h1>
-                    <p className="text-white/70">{walletData?.socialName}</p>
-                  </div>
-                </div>
 
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {walletData?.tags.map((tag: string, index: number) => (
-                    <span
-                      key={index}
-                      className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Wallet address and chain */}
-                <div className="max-w-l flex w-full flex-col gap-2">
-                  <div className="flex w-fit items-center gap-2 rounded-lg bg-white/5 p-2 px-3 py-2 transition-colors hover:bg-white/10">
-                    <span className="text-sm text-white/70">Chain:</span>
-                    <span className="text-sm text-white">{walletData?.chain}</span>
-                  </div>
-
-                  <div className="flex w-full items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
-                    <span className="text-sm text-white/70"># Wallet:</span>
-                    <code className="truncate break-all font-mono text-sm text-white">
-                      {walletData?.address}
-                    </code>
-                    <button
-                      onClick={() => copyToClipboard(walletData?.address || '')}
-                      className="ml-auto rounded-md p-1 opacity-50 transition-colors hover:bg-white/10 hover:opacity-100"
-                      title="Copy wallet address"
-                    >
-                      <Copy className="h-3 w-3 text-white" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right side: Individual Metric Cards and Social Links */}
-              <div className="flex h-full flex-col justify-between gap-4">
-                <div className="grid h-full grid-cols-4 gap-4">
-                  {/* Rank Card */}
-                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
-                    <p className="text-sm text-white/70">Rank</p>
-                    <div className="mt-2 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-white">#{walletData?.rank}</span>
-                      <Award className="ml-2 h-5 w-5 text-amber-400" />
-                    </div>
-                  </div>
-                  {/* 24h Performance Card */}
-                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
-                    <p className="text-sm text-white/70">Performance (24h)</p>
-                    <div className="mt-2 flex items-center justify-center">
-                      <TrendingUp className="mr-2 h-5 w-5 text-fluid-primary" />
-                      <span className="text-2xl font-bold text-white">
-                        +{walletData?.performance.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-                  {/* Last 30d Performance Card */}
-                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
-                    <p className="text-sm text-white/70">Performance (30d)</p>
-                    <div className="mt-2 flex items-center justify-center">
-                      {walletData?.performanceMetrics?.monthlyROI ? (
-                        <TrendingUp className="mr-2 h-5 w-5 text-green-400" />
-                      ) : (
-                        <TrendingDown className="mr-2 h-5 w-5 text-red-400" />
-                      )}
-                      <span className="text-2xl font-bold text-white">
-                        +{walletData?.performanceMetrics.monthlyROI.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-                  {/* Total Value Card */}
-                  <div className="flex h-full min-h-[110px] flex-col justify-center rounded-xl bg-white/5 p-4 text-center">
-                    <p className="text-sm text-white/70">Total Value</p>
-                    <div className="mt-2">
-                      <span className="text-2xl font-bold text-white">
-                        {formatCurrency(walletData?.totalValue ?? 0)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Social links */}
-                <div className="flex w-full items-center justify-end gap-3">
-                  <a
-                    href={walletData?.socialLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                    title="Twitter/X"
-                  >
-                    <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                  </a>
-                  <a
-                    href={walletData?.socialLinks.youtube}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
-                    title="YouTube"
-                  >
-                    <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
-                    </svg>
-                  </a>
-                  <div className="flex h-8 items-center gap-2 rounded-full bg-white/5 px-3 py-1">
-                    <Users className="h-3 w-3 text-white/70" />
-                    <span className="text-xs text-white">
-                      {walletData?.followers.toLocaleString()} followers
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <WalletHeroSection walletData={walletData} />
 
         {/* Main dashboard content */}
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -610,3 +466,171 @@ function formatCurrency(value: number) {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+const WalletHeroSection = ({ walletData }: { walletData: WalletData | null }) => {
+  return (
+    <div className="bg-gradient-to-r from-gray-900 to-gray-800/50 px-4 pb-14 pt-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-6 px-4 sm:px-6 md:flex-row md:items-start md:justify-between lg:px-8">
+          {/* Left side: Main details */}
+          <div>
+            {/* Name and social */}
+            <div className="mb-2 flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-fluid-primary/20">
+                <Wallet className="h-4 w-4 text-fluid-primary" />
+              </div>
+              <h1 className="flex items-center gap-2 text-3xl font-bold text-white md:text-4xl">
+                {walletData?.name}
+                {walletData && walletData.rank <= 3 && (
+                  <Trophy className="h-5 w-5 text-amber-400" />
+                )}
+              </h1>
+            </div>
+
+            {/* Wallet address and chain */}
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/70">Manager:</span>
+                  <code className="break-all font-mono text-sm text-white">
+                    {walletData?.name ? formatAddress(walletData.name) : 'Loading...'}
+                  </code>
+                  {walletData?.name && (
+                    <button
+                      onClick={() =>
+                        copyToClipboard(walletData.name, 'Manager address copied to clipboard')
+                      }
+                      className="rounded-md p-1 opacity-50 transition-colors hover:bg-white/10 hover:opacity-100"
+                      title="Copy manager address"
+                    >
+                      <Copy className="h-3 w-3 text-white" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <UserRoleBadge role={'wallet'} />
+            </div>
+            <WalletSocials walletData={walletData} />
+          </div>
+
+          {/* Right side: Individual Metric Cards and Social Links */}
+          <WalletMetrics walletData={walletData} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WalletMetrics = ({ walletData }: { walletData: WalletData | null }) => {
+  const metrics = [
+    {
+      label: 'Rank',
+      labelIcon: <Award className="h-5 w-5 text-amber-400" />,
+      value: walletData?.rank,
+      icon: <Award className="h-5 w-5 text-amber-400" />,
+    },
+    {
+      label: 'Performance (24h)',
+      labelIcon: <BarChart2 className="h-5 w-5 text-fluid-primary" />,
+      value: walletData?.performance.toFixed(2) + '%',
+      icon: <TrendingUp className="h-5 w-5 text-fluid-primary" />,
+    },
+    {
+      label: 'Performance (30d)',
+      labelIcon: <BarChart2 className="h-5 w-5 text-fluid-primary" />,
+      value: walletData?.performanceMetrics?.monthlyROI.toFixed(2) + '%',
+      icon: <TrendingUp className="h-5 w-5 text-fluid-primary" />,
+    },
+    {
+      label: 'Total Value',
+      labelIcon: <DollarSign className="h-5 w-5 text-fluid-primary" />,
+      value: formatCurrency(walletData?.totalValue ?? 0),
+    },
+  ];
+  return (
+    <div className="flex h-full flex-col justify-between gap-4">
+      <div className="grid grid-cols-4 gap-4">
+        {metrics.map(metric => (
+          <div
+            key={metric.label}
+            className="flexflex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              {metric?.labelIcon}
+              <p className="text-sm text-white/70">{metric.label}</p>
+            </div>
+            <span className="text-xl font-bold text-white">{metric.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const WalletSocials = ({ walletData }: { walletData: WalletData | null }) => {
+  return (
+    <div className="flex w-full items-center justify-start gap-3 pt-4">
+      <a
+        href={walletData?.socialLinks.twitter}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="X/Twitter"
+      >
+        <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+      </a>
+      <a
+        href={walletData?.socialLinks?.farcaster}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="Farcaster"
+      >
+        <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3.22 15.89C4.07 18.76 6.76 21 10 21h4c3.24 0 5.93-2.24 6.78-5.11.31-1.05.42-2.12.39-3.19l-1.01.93a4.99 4.99 0 0 1-6.46.37l-2.37-1.81-2.38 1.81a4.99 4.99 0 0 1-6.46-.37l-1.01-.93c-.03 1.07.08 2.14.39 3.19zM21 11.63a8 8 0 0 0-16 0" />
+        </svg>
+      </a>
+      <a
+        href={walletData?.socialLinks?.alfafrens}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-white/5 p-2 transition-colors hover:bg-white/10"
+        title="Alfafrens"
+      >
+        <svg
+          className="h-4 w-4 text-white"
+          viewBox="0 0 290 269"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M0.52002 162.566L55.7419 268.32H225.961L289.48 146.309L238.305 136.897L270.811 60.9621L217.24 72.3417L225.054 26.0105L178.533 48.4133L157.175 0L116.813 48.4133L80.5738 27.6362L72.76 90.224L25.6823 70.7161L48.4095 155.25L0.52002 162.566Z"
+            fill="#0400F5"
+          />
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M118.361 179.47C121.971 176.302 125.34 171.058 127.164 164.378C128.988 157.699 128.753 151.47 127.253 146.907C125.734 142.282 123.283 140.188 121.125 139.599C118.967 139.009 115.792 139.567 112.132 142.778C108.522 145.945 105.153 151.19 103.329 157.869C101.505 164.549 101.74 170.777 103.239 175.34C104.759 179.966 107.21 182.06 109.368 182.649C111.526 183.238 114.701 182.681 118.361 179.47ZM107.508 189.46C117.851 192.285 129.701 181.888 133.975 166.238C138.249 150.589 133.328 135.612 122.985 132.787C112.641 129.963 100.792 140.359 96.5179 156.009C92.2441 171.659 97.1645 186.635 107.508 189.46Z"
+            fill="#8CFB51"
+          />
+          <path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M188.626 140.072C189.858 141.754 189.493 144.117 187.811 145.349L166.332 161.077L187.62 175.408C189.35 176.573 189.808 178.919 188.644 180.649C187.479 182.379 185.133 182.837 183.403 181.672L159.505 165.584C156.435 163.517 156.346 159.03 159.332 156.843L183.349 139.256C185.032 138.024 187.394 138.389 188.626 140.072Z"
+            fill="#8CFB51"
+          />
+          <path
+            d="M165.517 201.135C167.28 202.223 167.845 204.551 166.554 206.172C164.029 209.343 160.903 212.001 157.342 213.989C152.687 216.587 147.443 217.952 142.111 217.952C136.779 217.952 131.536 216.588 126.88 213.989C123.32 212.002 120.194 209.343 117.668 206.173C116.377 204.552 116.942 202.223 118.706 201.135C120.469 200.048 122.761 200.62 124.112 202.191C125.923 204.295 128.096 206.074 130.537 207.436C134.075 209.411 138.059 210.448 142.111 210.448C146.163 210.448 150.147 209.411 153.685 207.436C156.126 206.073 158.299 204.295 160.11 202.191C161.462 200.62 163.753 200.047 165.517 201.135Z"
+            fill="#8CFB51"
+          />
+        </svg>
+      </a>
+      <div className="flex h-8 items-center gap-2 rounded-full bg-white/5 px-3 py-1">
+        <Users className="h-3 w-3 text-white/70" />
+        <span className="text-xs text-white">{walletData?.followers.toLocaleString()} frens</span>
+      </div>
+    </div>
+  );
+};
