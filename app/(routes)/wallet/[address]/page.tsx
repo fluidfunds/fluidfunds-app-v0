@@ -1,17 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import {
-  Trophy,
-  TrendingUp,
-  Copy,
-  BarChart2,
-  Zap,
-  Percent,
-  DollarSign,
-  Award,
-  Briefcase,
-} from 'lucide-react';
+import { Trophy, TrendingUp, Copy, BarChart2, Percent, DollarSign, Award } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
 // Import the Covalent API helper
 import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
@@ -232,33 +222,6 @@ export default function WalletDetailPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Quick Actions */}
-              <div className="mt-6 rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20">
-                    <Zap className="h-4 w-4 text-amber-400" />
-                  </div>
-                  <h2 className="text-lg font-bold text-white">Quick Actions</h2>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                  <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-fluid-primary p-3 font-medium text-black transition-colors hover:bg-fluid-primary/90">
-                    <Briefcase className="h-4 w-4" />
-                    <span>Copy Trades</span>
-                  </button>
-
-                  <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 p-3 font-medium text-white transition-colors hover:bg-white/20">
-                    <TrendingUp className="h-4 w-4" />
-                    <span>Place Prediction</span>
-                  </button>
-
-                  <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 p-3 font-medium text-white transition-colors hover:bg-white/20">
-                    <Bell className="h-4 w-4" />
-                    <span>Set Alert</span>
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Current Holdings and Performance History */}
@@ -410,22 +373,6 @@ const Users = ({ className }: IconProps) => (
     <circle cx="9" cy="7" r="4"></circle>
     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-  </svg>
-);
-
-const Bell = ({ className }: IconProps) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
   </svg>
 );
 
