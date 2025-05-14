@@ -224,9 +224,8 @@ export default function WalletDetailPage() {
               </div>
             </div>
 
-            {/* Current Holdings and Performance History */}
+            {/* Performance History */}
             <div className="lg:col-span-9">
-              {/* Performance History */}
               <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
                 <div className="mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -240,94 +239,8 @@ export default function WalletDetailPage() {
                   fundAddress={address as `0x${string}`}
                   tvl={walletData?.totalValue || 0}
                   percentageChange={walletData?.performance || 0}
+                  holdings={walletData?.holdings || []}
                 />
-              </div>
-
-              {/* Current Holdings */}
-              <div className="mt-6 rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-                <div className="mb-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
-                      <DollarSign className="h-4 w-4 text-green-400" />
-                    </div>
-                    <h2 className="text-lg font-bold text-white">Current Holdings</h2>
-                  </div>
-
-                  <div className="text-sm text-white/70">{walletData?.holdings.length} assets</div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="w-[200px] px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-white/70">
-                          Asset
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/70">
-                          Amount
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/70">
-                          Value
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-white/70">
-                          24h Change
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {walletData?.holdings
-                        .filter((asset: Holding) => asset.value !== 0)
-                        .map((asset: Holding, index: number) => (
-                          <tr
-                            key={index}
-                            className="border-b border-white/10 transition-colors hover:bg-white/5"
-                          >
-                            <td className="w-[200px] whitespace-nowrap px-6 py-4">
-                              <div className="flex items-center">
-                                <div className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
-                                  <span className="text-xs font-medium">
-                                    {asset.symbol.slice(0, 1)}
-                                  </span>
-                                </div>
-                                <div>
-                                  <div className="text-sm font-medium text-white">{asset.name}</div>
-                                  <div className="text-xs text-white/70">{asset.symbol}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right">
-                              <div className="text-sm text-white">
-                                {asset.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })}
-                              </div>
-                              <div className="text-xs text-white/70">{asset.symbol}</div>
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right">
-                              <div className="text-sm font-medium text-white">
-                                {formatCurrency(asset.value)}
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-6 py-4 text-right">
-                              <div
-                                className={`flex items-center justify-end text-sm font-medium ${
-                                  asset.change >= 0 ? 'text-green-400' : 'text-red-400'
-                                }`}
-                              >
-                                {asset.change >= 0 ? (
-                                  <TrendingUp className="mr-1 h-3 w-3" />
-                                ) : (
-                                  <TrendingDown className="mr-1 h-3 w-3" />
-                                )}
-                                <span>
-                                  {asset.change >= 0 ? '+' : ''}
-                                  {asset.change}%
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </div>
           </div>

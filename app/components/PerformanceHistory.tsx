@@ -91,6 +91,15 @@ interface PerformanceHistoryProps {
   tvl: number;
   percentageChange: number;
   fundAddress?: string; // This should be set by the parent component (Fund Detail page)
+  holdings?: Holding[]; // Add holdings from wallet page
+}
+
+interface Holding {
+  name: string;
+  symbol: string;
+  amount: number;
+  value: number;
+  change: number;
 }
 
 // Helper function to format address for display
@@ -103,6 +112,7 @@ export const PerformanceHistory = ({
   tvl,
   percentageChange,
   fundAddress,
+  holdings = [], // Add holdings with default empty array
 }: PerformanceHistoryProps) => {
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '1Y'>('3M');
   const [activeTab, setActiveTab] = useState<'performance' | 'portfolio'>('portfolio');
@@ -114,6 +124,7 @@ export const PerformanceHistory = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hideLowValueAssets, setHideLowValueAssets] = useState(true); // New state for toggle
   // Store the current fund address to prevent race conditions
   const currentFundAddress = useRef<string | undefined>(fundAddress);
 
@@ -150,6 +161,30 @@ export const PerformanceHistory = ({
   // Process token balances into assets
   const processTokenBalances = useCallback(
     (tokenBalances: TokenBalance[]): Asset[] => {
+      // If we have holdings data, use that instead of processing token balances
+      if (holdings.length > 0) {
+        return holdings.map(holding => {
+          const symbol = holding.symbol;
+          const color =
+            TOKEN_COLORS[symbol] ||
+            `hsl(${Math.abs((symbol || 'Unknown').split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
+
+          return {
+            id: symbol,
+            name: holding.name,
+            symbol: holding.symbol,
+            price: holding.value / holding.amount,
+            balance: holding.amount,
+            allocation: (holding.value / tvl) * 100,
+            value: holding.value,
+            color,
+            change: holding.change,
+            isDemo: false,
+          };
+        });
+      }
+
+      // Existing token balance processing logic
       if (!tokenBalances || tokenBalances.length === 0) {
         return [];
       }
@@ -340,7 +375,7 @@ export const PerformanceHistory = ({
       console.log('Processed portfolio assets:', portfolioAssets);
       return portfolioAssets.sort((a, b) => b.value - a.value);
     },
-    [averagePrices]
+    [averagePrices, holdings, tvl]
   );
 
   // Fetch portfolio data using Covalent API
@@ -396,7 +431,34 @@ export const PerformanceHistory = ({
 
   // Portfolio data for pie chart
   const portfolioData = useMemo(() => {
-    return assets.map(asset => ({
+    // Sort assets by value in descending order
+    const sortedAssets = [...assets].sort((a, b) => b.value - a.value);
+
+    // Take top 5 assets
+    const topAssets = sortedAssets.slice(0, 5);
+
+    // Calculate "Others" if there are more than 5 assets
+    if (sortedAssets.length > 5) {
+      const othersValue = sortedAssets.slice(5).reduce((sum, asset) => sum + asset.allocation, 0);
+
+      return [
+        ...topAssets.map(asset => ({
+          name: asset.symbol,
+          symbol: asset.symbol,
+          value: asset.allocation,
+          color: asset.color,
+        })),
+        {
+          name: 'Others',
+          symbol: 'Others',
+          value: othersValue,
+          color: '#718096', // A neutral gray color for "Others"
+        },
+      ];
+    }
+
+    // If 5 or fewer assets, return all of them
+    return sortedAssets.map(asset => ({
       name: asset.symbol,
       symbol: asset.symbol,
       value: asset.allocation,
@@ -452,7 +514,8 @@ export const PerformanceHistory = ({
     asset =>
       asset.name !== 'Unknown' &&
       (asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase()))
+        asset.symbol.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (!hideLowValueAssets || asset.value >= 1) // Add filter for low value assets
   );
 
   const sortedAssets = [...filteredAssets].sort((a, b) => {
@@ -682,7 +745,7 @@ export const PerformanceHistory = ({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 md:flex-row">
+              <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row md:items-center">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-white/40" />
                   <input
@@ -692,6 +755,20 @@ export const PerformanceHistory = ({
                     onChange={e => setSearchTerm(e.target.value)}
                     className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-4 text-white/80 focus:outline-none focus:ring-1 focus:ring-fluid-primary md:w-40"
                   />
+                </div>
+
+                {/* Add toggle for low value assets */}
+                <div className="flex items-center gap-2">
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={hideLowValueAssets}
+                      onChange={e => setHideLowValueAssets(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-5 w-9 rounded-full bg-white/10 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-fluid-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-fluid-primary/20"></div>
+                  </label>
+                  <span className="text-sm text-white/60">Hide low value assets (&lt;$1)</span>
                 </div>
               </div>
             </div>
@@ -754,7 +831,9 @@ export const PerformanceHistory = ({
                                   className="h-3 w-3 rounded-full"
                                   style={{ backgroundColor: entry.color }}
                                 />
-                                <span className="text-xs text-white">{entry.value}</span>
+                                <span className="text-xs text-white">
+                                  {entry.value} ({entry.payload.value.toFixed(1)}%)
+                                </span>
                               </li>
                             ))}
                           </ul>
