@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import {
   Trophy,
   TrendingUp,
@@ -12,7 +11,6 @@ import {
   DollarSign,
   Award,
   Briefcase,
-  Activity,
 } from 'lucide-react';
 import ParticleBackground from '@/app/components/ParticleBackground';
 // Import the Covalent API helper
@@ -20,6 +18,7 @@ import { getFundBalances, TokenBalance } from '@/app/utils/covalent';
 import BackNavigation from '@/app/components/BackNavigation';
 import { copyToClipboard, formatAddress } from '@/app/utils/common';
 import UserRoleBadge from '@/app/components/UserRoleBadge';
+import { PerformanceHistory } from '@/app/components/PerformanceHistory';
 
 // Define types for walletData and holdings
 interface WalletData {
@@ -167,9 +166,9 @@ export default function WalletDetailPage() {
 
         {/* Main dashboard content */}
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Performance metrics */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-3">
               <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
                 <div className="mb-6 flex items-center gap-2">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-fluid-primary/20">
@@ -262,9 +261,27 @@ export default function WalletDetailPage() {
               </div>
             </div>
 
-            {/* Current Holdings */}
-            <div className="lg:col-span-2">
+            {/* Current Holdings and Performance History */}
+            <div className="lg:col-span-9">
+              {/* Performance History */}
               <div className="rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
+                <div className="mb-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
+                      <TrendingUp className="h-4 w-4 text-green-400" />
+                    </div>
+                    <h2 className="text-lg font-bold text-white">Performance History</h2>
+                  </div>
+                </div>
+                <PerformanceHistory
+                  fundAddress={address as `0x${string}`}
+                  tvl={walletData?.totalValue || 0}
+                  percentageChange={walletData?.performance || 0}
+                />
+              </div>
+
+              {/* Current Holdings */}
+              <div className="mt-6 rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
                 <div className="mb-6 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
@@ -347,34 +364,6 @@ export default function WalletDetailPage() {
                         ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-
-              {/* Prediction Markets */}
-              <div className="mt-6 rounded-xl border border-white/5 bg-gray-800/30 p-6 backdrop-blur-sm transition-all hover:border-white/10">
-                <div className="mb-6 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20">
-                      <Activity className="h-4 w-4 text-purple-400" />
-                    </div>
-                    <h2 className="text-lg font-bold text-white">Related Predictions</h2>
-                  </div>
-
-                  <Link
-                    href="/wallet-predictions"
-                    className="text-sm text-fluid-primary hover:underline"
-                  >
-                    View All
-                  </Link>
-                </div>
-
-                <div className="rounded-lg bg-white/5 p-4 text-center">
-                  <p className="text-white/70">
-                    This wallet is currently involved in 3 active prediction markets
-                  </p>
-                  <button className="mt-4 rounded-lg bg-fluid-primary px-4 py-2 font-medium text-black transition-colors hover:bg-fluid-primary/90">
-                    View Predictions
-                  </button>
                 </div>
               </div>
             </div>
