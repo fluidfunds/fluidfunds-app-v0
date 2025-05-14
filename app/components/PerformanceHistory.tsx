@@ -163,6 +163,30 @@ export const PerformanceHistory = ({
   // Process token balances into assets
   const processTokenBalances = useCallback(
     (tokenBalances: TokenBalance[]): Asset[] => {
+      // If we have holdings data, use that instead of processing token balances
+      if (holdings.length > 0) {
+        return holdings.map(holding => {
+          const symbol = holding.symbol;
+          const color =
+            TOKEN_COLORS[symbol] ||
+            `hsl(${Math.abs((symbol || 'Unknown').split('').reduce((acc, char) => char.charCodeAt(0) + ((acc << 5) - acc), 0)) % 360}, 70%, 50%)`;
+
+          return {
+            id: symbol,
+            name: holding.name,
+            symbol: holding.symbol,
+            price: holding.value / holding.amount,
+            balance: holding.amount,
+            allocation: (holding.value / tvl) * 100,
+            value: holding.value,
+            color,
+            change: holding.change,
+            isDemo: false,
+          };
+        });
+      }
+
+      // Existing token balance processing logic
       if (!tokenBalances || tokenBalances.length === 0) {
         return [];
       }
@@ -353,7 +377,7 @@ export const PerformanceHistory = ({
       console.log('Processed portfolio assets:', portfolioAssets);
       return portfolioAssets.sort((a, b) => b.value - a.value);
     },
-    [averagePrices]
+    [averagePrices, holdings, tvl]
   );
 
   // Update assets when holdings change
