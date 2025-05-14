@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import { SUPERFLUID_QUERY_URL } from '@/app/config/superfluid';
 import { formatEther } from 'viem';
@@ -45,9 +45,10 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
   const [totalStreamedAmount, setTotalStreamedAmount] = useState<bigint>(BigInt(0));
   const [dailyFlowRate, setDailyFlowRate] = useState<string>('0');
   const { address: walletAddress } = useAccount();
+  const isFetching = useRef(false);
 
   // Memoize addresses to prevent unnecessary re-renders
-  const memoizedAddresses = useCallback(
+  const addresses = useMemo(
     () => ({
       fund: fundAddress?.toLowerCase(),
       wallet: walletAddress?.toLowerCase(),
@@ -56,19 +57,20 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
   );
 
   const fetchInvestorStream = useCallback(async () => {
-    const addresses = memoizedAddresses();
+    // Prevent concurrent fetches
+    if (isFetching.current) return;
+    isFetching.current = true;
+
     if (!addresses.fund || !addresses.wallet) {
       logger.log('Missing address data', {
         fundAddress: addresses.fund,
         walletAddress: addresses.wallet,
       });
+      isFetching.current = false;
       return;
     }
 
-    // Don't set loading state for polling updates
-    if (!stream) {
-      setLoading(true);
-    }
+    setLoading(true);
 
     try {
       // Query for streams from this wallet to the fund
@@ -131,7 +133,6 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
         setTotalStreamedAmount(BigInt(0));
         setDailyFlowRate('0');
         setError(null);
-        setLoading(false);
         return;
       }
 
@@ -177,19 +178,16 @@ export function useInvestorStreams(fundAddress?: `0x${string}`) {
       logger.error('Error fetching investor stream:', err);
     } finally {
       setLoading(false);
+      isFetching.current = false;
     }
-  }, [memoizedAddresses, stream]); // Reduced dependencies
+  }, [addresses]);
 
+  // Make a single call when the component mounts or addresses change
   useEffect(() => {
-    const addresses = memoizedAddresses();
-    if (!addresses.fund || !addresses.wallet) return;
-
-    fetchInvestorStream();
-    // Poll every 30 seconds instead of 10 for less frequent updates
-    const interval = setInterval(fetchInvestorStream, 30000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchInvestorStream]);
+    if (addresses.fund && addresses.wallet) {
+      fetchInvestorStream();
+    }
+  }, [addresses.fund, addresses.wallet, fetchInvestorStream]);
 
   // Memoize return values to prevent unnecessary re-renders
   return useMemo(

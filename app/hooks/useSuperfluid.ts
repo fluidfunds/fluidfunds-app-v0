@@ -300,10 +300,6 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
     }
 
     fetchActiveStreams();
-    const interval = setInterval(() => {
-      fetchActiveStreams();
-    }, 10000); // 10s interval
-    return () => clearInterval(interval);
   }, [fundAddress, fetchActiveStreams]);
 
   useEffect(() => {
@@ -313,8 +309,6 @@ export function useSuperfluid(fundAddress?: `0x${string}`) {
     }
 
     fetchUSDCxBalance();
-    const interval = setInterval(fetchUSDCxBalance, 10000); // 10s interval
-    return () => clearInterval(interval);
   }, [walletClient?.account, fetchUSDCxBalance]);
 
   return {
